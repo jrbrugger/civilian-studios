@@ -1,0 +1,1479 @@
+/*
+ * Civilian Studios — Metallic UI 1.0.0
+ * A skin for shadcn (and any components that expose the same data-slot / state attributes).
+ *
+ * Turn it on:  <html data-material="metallic">   (or any element: it only styles what is inside it)
+ * Add .dark to the same element or an ancestor for gunmetal steel on dark pages.
+ *
+ * Dials (attributes next to data-material; every one is optional):
+ *   data-alloy    steel | silver | aluminium | titanium | gold | brass | bronze | copper | blue | red | orange | purple
+ *   data-polish   satin | polished | mirror
+ *   data-finish   textured | smooth
+ *   data-grain    fine | coarse | spun        (textured finish only)
+ *   data-depth    flat | bevelled | deep
+ *   data-density  compact | default | roomy
+ *   data-corners  machined | default | soft
+ *   data-motion   crisp | snappy | soft
+ *   data-sweep    off | click | ambient
+ *   data-rm       forces reduced motion (the OS setting is always respected)
+ * Tokens you may set: --motion-speed (multiplies every duration; 1 = as designed).
+ *
+ * Rules are deliberately unlayered, so they win over Tailwind utilities on the same element.
+ * Source of truth for the registry item "metallic"; see docs/design/metallic-principles.md.
+ */
+
+/* ── tokens ─────────────────────────────────────────────────────────────── */
+[data-material="metallic"] {
+  --metallic-steel: repeating-linear-gradient(180deg, rgba(255,255,255,.07) 0 1px, rgba(0,0,0,.05) 1px 2px), linear-gradient(180deg, #f5f7fb 0%, #d3d8e1 34%, #a2a9b6 52%, #c4c9d3 76%, #eef0f4 100%);
+  --metallic-edge: #6f7685;
+  --metallic-ink: #1c2028;
+  --metallic-engrave: 0 1px 0 rgba(255,255,255,.6);
+  --metallic-sheen: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.75) 50%, transparent 65%);
+  --metallic-check: #2c323d;
+  --metallic-edge-quiet: #878d9a; /* 3:1 on page, card and muted fills (WCAG 1.4.11) */
+  --metallic-edge-hover: color-mix(in oklch, var(--metallic-edge), var(--foreground) 30%);
+  --metallic-chamfer: rgba(255,255,255,.6);
+  --metallic-seam-light: rgba(255,255,255,.6);
+  --metallic-tarnish: linear-gradient(180deg, #c9ccd2, #b7bbc2);
+
+  --metallic-depth-raised: inset 0 1px 0 rgba(255,255,255,.9), inset 0 -1px 0 rgba(0,0,0,.22), 0 1px 2px rgba(0,0,0,.45);
+  --metallic-depth-raised-flush: inset 0 1px 0 rgba(255,255,255,.9), inset 0 -1px 0 rgba(0,0,0,.22);
+  --metallic-depth-pressed: inset 0 1px 2px rgba(0,0,0,.35), inset 0 -1px 0 rgba(255,255,255,.5), 0 0 0 rgba(0,0,0,0);
+  --metallic-depth-groove: inset 0 1px 2px rgba(0,0,0,.2), 0 1px 0 var(--metallic-seam-light);
+  --metallic-depth-float: 0 0 0 1px var(--metallic-edge-quiet), inset 0 1px 0 var(--metallic-chamfer), 0 2px 4px rgba(0,0,0,.12), 0 12px 24px -8px rgba(0,0,0,.35);
+  --metallic-rim: 0 0 0 1px color-mix(in oklch, var(--foreground) 10%, transparent), inset 0 1px 0 var(--metallic-chamfer);
+
+  /* Speed = --motion-speed (review) x the Motion dial's character; every duration is calc(Nms * var(--motion-scale)). */
+  --motion-character: 1;
+  --motion-scale: calc(var(--motion-speed, 1) * var(--motion-character));
+  --motion-press: calc(60ms * var(--motion-scale));
+  --motion-fast: calc(100ms * var(--motion-scale));
+  --motion-enter: calc(120ms * var(--motion-scale));
+  --motion-release: calc(150ms * var(--motion-scale));
+  --motion-base: calc(180ms * var(--motion-scale));
+  --motion-sheen: calc(700ms * var(--motion-scale));
+  --ease-standard: cubic-bezier(.2,.8,.2,1);
+  --ease-snap: cubic-bezier(.34,1.25,.64,1);
+  --ease-exit: cubic-bezier(.4,0,1,1);
+  --ease-sheen: cubic-bezier(.3,.6,.2,1);
+  --ease-inout: cubic-bezier(.45,0,.25,1);
+  /*
+   * Motion families (round 7). The Motion dial swaps all of them together, so one mode feels the same everywhere:
+   *   travel  – a part moving to a new place (tab bar, slider, switch thumb, chevron)
+   *   pop     – a small mark appearing (radio dot, check)
+   *   overlay – menus, popovers, selects, hover cards, dialogs arriving
+   *   height  – panels opening (accordion). Never overshoots: a bouncing height shoves the page.
+   * Snappy is the reference (the owner likes its menus as they are); Crisp drops every overshoot; Soft uses springs.
+   */
+  --travel-k: 1;
+  --overlay-k: 1;
+  --motion-travel: calc(240ms * var(--motion-scale) * var(--travel-k));
+  --motion-pop: calc(200ms * var(--motion-scale) * var(--travel-k));
+  --motion-overlay: calc(120ms * var(--motion-scale) * var(--overlay-k));
+  --motion-height: calc(280ms * var(--motion-scale));
+  --ease-travel: cubic-bezier(.3,1.2,.6,1);
+  --ease-pop: cubic-bezier(.34,1.5,.64,1);
+  --ease-overlay: var(--ease-standard);
+  --ease-height: cubic-bezier(.4,0,.2,1);
+  --overlay-scale: .98;
+  --overlay-shift: 2px;
+  --overlay-blur: 0px;
+  /* How far a travelling bar's trailing edge lags its leading edge (1 = rigid). */
+  --motion-stretch: 1.15;
+
+  /* Neutral focus and primary (decision 1): colour stays free for meaning. */
+  --ring: #2c323d;
+  --primary: #2c323d;
+  --primary-foreground: #ffffff;
+}
+:is([data-material="metallic"].dark, .dark [data-material="metallic"]) {
+  --metallic-edge-quiet: #6b717d; /* 3:1 on dark page, card and muted fills */
+  --metallic-chamfer: rgba(255,255,255,.08);
+  --metallic-seam-light: rgba(255,255,255,.06);
+  --ring: #d3d8e1;
+  --primary: #d3d8e1;
+  --primary-foreground: #1c2028;
+}
+/* Dark mode is dark steel (gunmetal); light mode is light steel. Synced on the owner's call (revises decision 9). */
+:is([data-material="metallic"].dark, .dark [data-material="metallic"]) {
+  --metallic-steel: repeating-linear-gradient(180deg, rgba(255,255,255,.05) 0 1px, rgba(0,0,0,.08) 1px 2px), linear-gradient(180deg, #5a616d 0%, #3a3f48 34%, #262a31 52%, #30353d 76%, #4a505a 100%);
+  --metallic-ink: #e8ebf0;
+  --metallic-edge: #8a909c;
+  --metallic-engrave: 0 -1px 0 rgba(0,0,0,.5);
+  --metallic-check: #e8ebf0;
+  --metallic-depth-raised: inset 0 1px 0 rgba(255,255,255,.18), inset 0 -1px 0 rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.6);
+  --metallic-depth-raised-flush: inset 0 1px 0 rgba(255,255,255,.18), inset 0 -1px 0 rgba(0,0,0,.4);
+}
+
+/*
+ * Buttons are matched by slot OR by a Radix wrapper's slot: `<SheetClose asChild><Button/></SheetClose>` overwrites
+ * the button's data-slot with "sheet-close" (same for -trigger, -action, -cancel). data-variant survives, so plates
+ * key on the variant. Finding for the real build: Civilian Button needs an identity wrappers can't overwrite.
+ */
+/* ── part families ──────────────────────────────────────────────────────── */
+/* Plates: always steel. */
+[data-material="metallic"] :is(:is([data-slot="button"], [data-slot$="-close"], [data-slot$="-trigger"], [data-slot$="-action"], [data-slot$="-cancel"], [data-slot$="-next"], [data-slot$="-previous"], [data-slot$="-submit"], [data-slot$="-skip"])[data-variant="default"], [data-slot="badge"][data-variant="default"], [data-slot="slider-thumb"], [data-slot="switch-thumb"], [data-metal]), [data-material="metallic"] :is([data-slot="toggle"], [data-slot="toggle-group-item"], [data-slot="chip-group-item"]):is([data-state="on"], [data-pressed]), [data-material="metallic"] [data-slot="tabs-list"][data-variant="default"] [data-slot="tabs-trigger"]:is([data-state="active"], [data-active]) {
+  background: var(--metallic-steel);
+  border-color: var(--metallic-edge);
+  color: var(--metallic-ink);
+  box-shadow: var(--metallic-depth-raised);
+  text-shadow: var(--metallic-engrave);
+}
+/* Small text stays crisp: no engraving at 12px and below. */
+[data-material="metallic"] :is([data-slot="badge"], .text-xs) { text-shadow: none; }
+[data-material="metallic"] [data-slot="badge"][data-variant="default"] { border-radius: var(--radius-md); }
+
+/* Value plates inside a row: calendar days. Raised-flush, no drop shadow. */
+[data-material="metallic"] [data-slot="calendar"] :is([data-selected-single="true"], [data-range-start="true"], [data-range-end="true"]) {
+  background: var(--metallic-steel);
+  color: var(--metallic-ink);
+  /* Edge drawn inside: neighbouring days sit at the same z-index and would cover an outer ring. */
+  box-shadow: inset 0 0 0 1px var(--metallic-edge), var(--metallic-depth-raised-flush);
+  text-shadow: var(--metallic-engrave);
+}
+/* Machined join: a range end squares the corners that meet the band, so plate and band sit flush. */
+[data-material="metallic"] [data-slot="calendar"] [data-range-start="true"]:not([data-range-end="true"]) { border-start-end-radius: 0; border-end-end-radius: 0; }
+[data-material="metallic"] [data-slot="calendar"] [data-range-end="true"]:not([data-range-start="true"]) { border-start-start-radius: 0; border-end-start-radius: 0; }
+
+/* Press: one detent for every plate. 60ms down, 150ms back (decision 3). */
+[data-material="metallic"] :is(:is([data-slot="button"], [data-slot$="-close"], [data-slot$="-trigger"], [data-slot$="-action"], [data-slot$="-cancel"], [data-slot$="-next"], [data-slot$="-previous"], [data-slot$="-submit"], [data-slot$="-skip"])[data-variant="default"], [data-slot="toggle"], [data-slot="toggle-group-item"], [data-slot="chip-group-item"], [data-slot="tabs-trigger"], [data-metal]) {
+  transition: filter var(--motion-release) var(--ease-standard), box-shadow var(--motion-release) var(--ease-standard), translate var(--motion-release) var(--ease-travel), border-color var(--motion-fast) var(--ease-standard);
+}
+[data-material="metallic"] :is(:is([data-slot="button"], [data-slot$="-close"], [data-slot$="-trigger"], [data-slot$="-action"], [data-slot$="-cancel"], [data-slot$="-next"], [data-slot$="-previous"], [data-slot$="-submit"], [data-slot$="-skip"])[data-variant="default"], [data-slot="toggle"], [data-slot="toggle-group-item"], [data-slot="chip-group-item"], [data-slot="tabs-trigger"], [data-metal]):active:not(:disabled, [aria-haspopup]) {
+  translate: 0 1px;
+  filter: brightness(.95);
+  box-shadow: var(--metallic-depth-pressed);
+  transition-duration: var(--motion-press);
+}
+@media (hover: hover) {
+  [data-material="metallic"] :is(:is([data-slot="button"], [data-slot$="-close"], [data-slot$="-trigger"], [data-slot$="-action"], [data-slot$="-cancel"], [data-slot$="-next"], [data-slot$="-previous"], [data-slot$="-submit"], [data-slot$="-skip"])[data-variant="default"], [data-metal]):hover:not(:disabled) {
+    filter: brightness(1.05);
+    border-color: var(--metallic-edge-hover);
+  }
+}
+/* Disabled steel goes flat. */
+[data-material="metallic"] :is([data-slot="button"], [data-slot$="-close"], [data-slot$="-trigger"], [data-slot$="-action"], [data-slot$="-cancel"], [data-slot$="-next"], [data-slot$="-previous"], [data-slot$="-submit"], [data-slot$="-skip"])[data-variant="default"]:disabled { box-shadow: none; text-shadow: none; }
+
+/* Quiet parts: machined 3:1 edges (decision 7). */
+[data-material="metallic"] :is(:is([data-slot="button"], [data-slot$="-close"], [data-slot$="-trigger"], [data-slot$="-action"], [data-slot$="-cancel"], [data-slot$="-next"], [data-slot$="-previous"], [data-slot$="-submit"], [data-slot$="-skip"])[data-variant="outline"], [data-slot="toggle-group"][data-variant="outline"] [data-slot="toggle-group-item"]:not([data-state="on"]), [data-slot="chip-group-item"]:not([data-state="on"])) {
+  border-color: var(--metallic-edge-quiet);
+}
+
+/* Grooves: fields hold content, so they are never steel. */
+[data-material="metallic"] :is([data-slot="input"], [data-slot="textarea"], [data-slot="select-trigger"], [data-slot="native-select"]) {
+  border-color: var(--metallic-edge-quiet);
+  box-shadow: var(--metallic-depth-groove);
+  transition: border-color var(--motion-fast) var(--ease-standard);
+}
+@media (hover: hover) {
+  [data-material="metallic"] :is([data-slot="input"], [data-slot="textarea"], [data-slot="select-trigger"], [data-slot="native-select"]):hover { border-color: var(--metallic-edge-hover); }
+}
+[data-material="metallic"] [data-slot="select-trigger"][data-state="open"] { border-color: var(--metallic-edge); }
+[data-material="metallic"] [data-slot="tabs-list"][data-variant="default"],
+[data-material="metallic"] [data-slot="slider-track"] { box-shadow: var(--metallic-depth-groove); }
+/*
+ * Slider (round 7): still a thin bar, now a polished rod — a lit top edge, a shaded underside and a faint brushed
+ * grain (two periods that never line up, so it doesn't read as ruler ticks). Smooth finish drops the grain.
+ */
+[data-material="metallic"] [data-slot="slider-range"] {
+  background:
+    var(--metallic-rod-grain),
+    linear-gradient(180deg, color-mix(in oklch, var(--metallic-edge), white 38%) 0%, var(--metallic-edge) 55%, color-mix(in oklch, var(--metallic-edge), black 22%) 100%);
+}
+[data-material="metallic"] { --metallic-rod-grain: repeating-linear-gradient(90deg, rgba(255,255,255,.09) 0 1px, transparent 1px 2px), repeating-linear-gradient(90deg, rgba(0,0,0,.07) 0 1px, transparent 1px 5px); }
+[data-material="metallic"][data-material="metallic"][data-finish="smooth"] { --metallic-rod-grain: linear-gradient(transparent, transparent); }
+/*
+ * Glide: a click on the track or an arrow key slides the thumb and fill to the new value on the travel curve.
+ * Dragging stays 1:1 with the pointer (spike-chrome removes data-glide on the first drag move), so it never lags.
+ */
+[data-material="metallic"] [data-slot="slider"][data-glide] [data-slot="slider-range"] { transition: left var(--motion-travel) var(--ease-travel), right var(--motion-travel) var(--ease-travel); }
+[data-material="metallic"] [data-slot="slider"][data-glide] span:has(> [data-slot="slider-thumb"]) { transition: left var(--motion-travel) var(--ease-travel); }
+/* The thumb lifts a touch while held. */
+[data-material="metallic"] [data-slot="slider-thumb"] { transition: color var(--motion-fast), box-shadow var(--motion-fast), scale var(--motion-fast) var(--ease-travel); }
+[data-material="metallic"] [data-slot="slider-thumb"]:active { scale: 1.15; }
+
+/* Checkbox (decision 6): steel when standalone, flat inside menus and tables. */
+[data-material="metallic"] [data-slot="checkbox"] { border-color: var(--metallic-edge); box-shadow: var(--metallic-depth-groove); }
+[data-material="metallic"] [data-slot="checkbox"]:is([data-state="checked"], [data-state="indeterminate"], [data-checked]) {
+  background: var(--metallic-steel);
+  border-color: var(--metallic-edge);
+  color: var(--metallic-check);
+  box-shadow: var(--metallic-depth-raised-flush);
+}
+[data-material="metallic"] :is([role="menu"], table, [cmdk-root]) [data-slot="checkbox"]:is([data-state="checked"], [data-checked]) {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: none;
+}
+
+/* Switch: dark groove when on, steel thumb that travels with the snap. */
+[data-material="metallic"] [data-slot="switch"] { border-color: var(--metallic-edge-quiet); }
+[data-material="metallic"] [data-slot="switch"]:is([data-state="checked"], [data-checked]) {
+  background: var(--metallic-edge);
+  border-color: var(--metallic-edge);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.4);
+}
+[data-material="metallic"] [data-slot="switch-thumb"] { transition: transform var(--motion-travel) var(--ease-travel), translate var(--motion-travel) var(--ease-travel); }
+
+/* Surfaces: calm bodies, a rim and a chamfer (decision 8). */
+[data-material="metallic"] [data-slot="card"] { box-shadow: var(--metallic-rim); }
+[data-material="metallic"] :is([data-slot="card-footer"], [data-slot="dialog-footer"]) { box-shadow: inset 0 1px 0 var(--metallic-seam-light); }
+/* Menus and popovers float; dialog/sheet/drawer/command get the brushed panel fill in the overlays block below. */
+[data-material="metallic"] :is([data-slot="select-content"], [data-slot="dropdown-menu-content"], [data-slot="dropdown-menu-sub-content"], [data-slot="menubar-content"], [data-slot="menubar-sub-content"], [data-slot="context-menu-content"], [data-slot="context-menu-sub-content"], [data-slot="combobox-content"], [data-slot="navigation-menu-viewport"], [data-slot="popover-content"]) {
+  background: var(--metallic-panel);
+  box-shadow: var(--metallic-depth-float);
+  --muted-foreground: var(--metallic-panel-muted);
+  overflow: hidden;
+}
+
+/*
+ * Overlay motion (decision 4, round 7): every menu, popover, select, hover card, tooltip and dialog arrives the same
+ * way for the current Motion mode, growing from its trigger and nudged away from it; leaving is always quick.
+ */
+[data-material="metallic"] :is([data-slot="dialog-content"], [data-slot="alert-dialog-content"], [data-slot$="-content"][data-side]:not([data-slot="sheet-content"])):is([data-state="open"], [data-state="delayed-open"], [data-state="instant-open"], [data-open]) {
+  animation-duration: var(--motion-overlay);
+  animation-timing-function: var(--ease-overlay);
+  --tw-enter-scale: var(--overlay-scale);
+  --tw-enter-blur: var(--overlay-blur);
+}
+[data-material="metallic"] [data-slot$="-content"][data-side="bottom"]:not([data-slot="sheet-content"]) { --tw-enter-translate-x: 0; --tw-enter-translate-y: calc(var(--overlay-shift) * -1); }
+[data-material="metallic"] [data-slot$="-content"][data-side="top"]:not([data-slot="sheet-content"]) { --tw-enter-translate-x: 0; --tw-enter-translate-y: var(--overlay-shift); }
+[data-material="metallic"] [data-slot$="-content"][data-side="left"]:not([data-slot="sheet-content"]) { --tw-enter-translate-y: 0; --tw-enter-translate-x: var(--overlay-shift); }
+[data-material="metallic"] [data-slot$="-content"][data-side="right"]:not([data-slot="sheet-content"]) { --tw-enter-translate-y: 0; --tw-enter-translate-x: calc(var(--overlay-shift) * -1); }
+[data-material="metallic"] :is([data-slot="dialog-content"], [data-slot="alert-dialog-content"], [data-slot$="-content"][data-side]:not([data-slot="sheet-content"])):is([data-state="closed"], [data-closed]) {
+  animation-duration: var(--motion-fast);
+  animation-timing-function: var(--ease-exit);
+  --tw-exit-scale: .99;
+  --tw-exit-blur: 0px;
+}
+
+/* Markings (decision 13): small labels like the engraving on hardware. */
+[data-material="metallic"] :is([data-slot="select-label"], [data-slot="dropdown-menu-label"], [data-slot="context-menu-label"], [data-slot="menubar-label"], [data-slot="sidebar-group-label"], [data-slot="field-legend"]) {
+  font: 500 12px/16px var(--font-mono, ui-monospace, monospace);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted-foreground);
+}
+/* Live numbers don't jiggle (decision 14). */
+[data-material="metallic"] [data-numeric] { font-variant-numeric: tabular-nums; }
+
+/* Focus: a 2px neutral outline, never a shadow. Joined parts draw it inside. */
+[data-material="metallic"] :is(:is([data-slot="button"], [data-slot$="-close"], [data-slot$="-trigger"], [data-slot$="-action"], [data-slot$="-cancel"], [data-slot$="-next"], [data-slot$="-previous"], [data-slot$="-submit"], [data-slot$="-skip"]), [data-slot="toggle"], [data-slot="toggle-group-item"], [data-slot="chip-group-item"], [data-slot="tabs-trigger"], [data-slot="switch"], [data-slot="slider-thumb"], [data-slot="checkbox"], [data-slot="input"], [data-slot="textarea"], [data-slot="select-trigger"], [data-slot="native-select"], [data-metal]):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  position: relative;
+  z-index: 10;
+}
+[data-material="metallic"] :is([data-slot="toggle-group-item"], [data-slot="chip-group-item"]):focus-visible { outline-offset: -3px; }
+
+/*
+ * After a mouse click, Radix focuses tabs and toggle items itself and Chrome reports :focus-visible, so the outline
+ * would appear under the mouse. Hide it while the person is using a pointer; text fields keep it (typing comes next).
+ * Keyboard users always get it. Real build: Civilian components handle this without page script.
+ */
+:is([data-material="metallic"][data-modality="pointer"], [data-modality="pointer"] [data-material="metallic"]) :focus-visible:not(input):not(textarea):not([contenteditable]) { outline: none; }
+
+/*
+ * The light sweep (decision 2): only on the element a person just acted on (data-sheen, set by the guard).
+ * It moves across the plate's own surface (background-position on a pseudo-element sized to the plate), so the
+ * plate's box, overflow and any existing ::after (line-tab underline) are never touched.
+ */
+[data-material="metallic"] [data-sheen]:not([data-slot="tabs-list"][data-variant="line"] *) { position: relative; }
+[data-material="metallic"] [data-sheen]:not([data-slot="tabs-list"][data-variant="line"] *)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 1;
+  background: var(--metallic-sheen) no-repeat;
+  background-size: 250% 100%;
+  animation: metallic-sheen var(--motion-sheen) var(--ease-sheen) 40ms both;
+  /* No fade when the sweep ends: the stock ::after it borrows is a 2px underline that would linger for 150ms. */
+  transition: none;
+}
+/* Pill tabs never have an underline: only the line variant draws one. */
+[data-material="metallic"] [data-slot="tabs-list"]:not([data-variant="line"]) [data-slot="tabs-trigger"]:not([data-sheen])::after { content: none; }
+@keyframes metallic-sheen {
+  from { background-position: 110% 0; }
+  to { background-position: -10% 0; }
+}
+
+/* ── errors (decision 19): hatching + tarnish, jam on the attempt; never a red field ── */
+/* Destructive text (badges, tinted destructive buttons, menu items) and error messages use the danger ink: AA on tints, panels and trays. */
+[data-material="metallic"] :is([data-variant="destructive"], [data-slot="field-error"]) { color: var(--metallic-danger-ink); }
+
+/* ── reduced motion and forced colours ─────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  [data-material="metallic"] *, [data-material="metallic"] *::before, [data-material="metallic"] *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; }
+}
+[data-material="metallic"][data-rm] *, [data-material="metallic"][data-rm] *::before, [data-material="metallic"][data-rm] *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; }
+@media (forced-colors: active) {
+  [data-material="metallic"] :is([data-slot="input"], [data-slot="textarea"], [data-slot="select-trigger"], [data-slot="native-select"], [data-slot="input-otp-slot"], [data-slot="checkbox"], [data-slot="radio-group-item"], [data-slot="switch"])[aria-invalid="true"], [data-material="metallic"] [data-slot="input-group"]:has([aria-invalid="true"]) { border: 3px solid Mark; }
+}
+
+/* ── more components (/all) ────────────────────────────────────────────── */
+[data-material="metallic"] { --motion-slow: calc(200ms * var(--motion-scale)); }
+
+/* Radio: a groove ring; the chosen one is a steel bead with an ink dot. */
+[data-material="metallic"] [data-slot="radio-group-item"] { border-color: var(--metallic-edge); box-shadow: var(--metallic-depth-groove); }
+[data-material="metallic"] [data-slot="radio-group-item"]:is([data-state="checked"], [data-checked]) {
+  background: var(--metallic-steel);
+  border-color: var(--metallic-edge);
+  box-shadow: var(--metallic-depth-raised-flush);
+}
+[data-material="metallic"] [data-slot="radio-group-indicator"] > span { background: var(--metallic-ink); }
+/*
+ * Selecting (round 7): the steel bead lives on its own layer so it can swell into the ring (gradients can't fade),
+ * then the ink dot pops in on the pop curve. Unselecting shrinks both away quickly. An invalid radio keeps its
+ * hatching on the ring itself, so it skips the bead layer.
+ */
+[data-material="metallic"] [data-slot="radio-group-item"]:is([data-state="checked"], [data-checked]):not([aria-invalid="true"]) { background: var(--metallic-glass); box-shadow: var(--metallic-depth-groove); }
+[data-material="metallic"] [data-slot="radio-group-item"]:not([aria-invalid="true"])::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--metallic-steel);
+  box-shadow: var(--metallic-depth-raised-flush);
+  opacity: 0;
+  scale: .5;
+  transition: opacity var(--motion-fast) var(--ease-exit), scale var(--motion-fast) var(--ease-exit);
+}
+[data-material="metallic"] [data-slot="radio-group-item"]:is([data-state="checked"], [data-checked]):not([aria-invalid="true"])::before {
+  opacity: 1;
+  scale: 1;
+  transition: opacity var(--motion-fast) var(--ease-standard), scale var(--motion-pop) var(--ease-pop);
+}
+/* The indicator fills the ring, so the dot is centred whether or not it is mid-animation. */
+[data-material="metallic"] [data-slot="radio-group-indicator"] { position: absolute; inset: 0; width: auto; height: auto; }
+[data-material="metallic"] :is([data-slot="radio-group-indicator"], [data-slot="checkbox-indicator"])[data-state="checked"], [data-material="metallic"] [data-slot="checkbox-indicator"][data-state="indeterminate"] { animation: metallic-pop-in var(--motion-pop) var(--ease-pop) calc(var(--motion-fast) * .4) both; }
+/* Radix keeps the indicator mounted until this ends, so unchecking is animated too. */
+[data-material="metallic"] :is([data-slot="radio-group-indicator"], [data-slot="checkbox-indicator"])[data-state="unchecked"] { animation: metallic-pop-out var(--motion-fast) var(--ease-exit) both; }
+@keyframes metallic-pop-in { from { opacity: 0; scale: .3; } }
+@keyframes metallic-pop-out { to { opacity: 0; scale: .5; } }
+
+/* Input Group: the wrapper is the groove, and focus is drawn on the wrapper. */
+[data-material="metallic"] [data-slot="input-group"] { border-color: var(--metallic-edge-quiet); box-shadow: var(--metallic-depth-groove); }
+[data-material="metallic"] [data-slot="input-group"]:has([data-slot="input-group-control"]:focus-visible) {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Input OTP: machined slots that share seams; the active slot gets the outline inside. */
+[data-material="metallic"] [data-slot="input-otp-slot"] { border-color: var(--metallic-edge-quiet); box-shadow: var(--metallic-depth-groove); font-variant-numeric: tabular-nums; }
+[data-material="metallic"] [data-slot="input-otp-slot"][data-active="true"] { outline: 2px solid var(--ring); outline-offset: -3px; z-index: 10; }
+
+/* Pagination: the current page is a flush steel plate. */
+[data-material="metallic"] [data-slot="pagination-link"]:is([data-active="true"], [aria-current="page"]) {
+  background: var(--metallic-steel);
+  border-color: var(--metallic-edge);
+  color: var(--metallic-ink);
+  box-shadow: var(--metallic-depth-raised-flush);
+  text-shadow: var(--metallic-engrave);
+}
+
+
+/* Overlays: brushed panel body + float depth. Footers stay a separate tray (below). Tooltips stay stock. */
+[data-material="metallic"] :is(
+  [data-slot="dialog-content"],
+  [data-slot="alert-dialog-content"],
+  [data-slot="sheet-content"],
+  [data-slot="drawer-content"],
+  [data-slot="hover-card-content"]
+) {
+  background: var(--metallic-panel);
+  border-color: color-mix(in oklch, var(--metallic-edge) 45%, transparent);
+  box-shadow: var(--metallic-depth-float);
+  --muted-foreground: var(--metallic-panel-muted);
+  /* Clip brushed fills to the stock radius — otherwise square paint peeks past the curve. */
+  overflow: hidden;
+}
+[data-material="metallic"] [data-sonner-toaster] [data-sonner-toast][data-styled="true"] { box-shadow: var(--metallic-depth-float); border-color: transparent; }
+[data-material="metallic"] [data-slot="alert-dialog-footer"] { box-shadow: inset 0 1px 0 var(--metallic-seam-light); }
+
+/* Command: a brushed panel with markings; the highlight stays quiet (never steel). */
+[data-material="metallic"] [data-slot="command"] {
+  background: var(--metallic-panel);
+  border-color: var(--metallic-edge-quiet);
+  box-shadow: inset 0 1px 0 var(--metallic-chamfer);
+  --muted-foreground: var(--metallic-panel-muted);
+  overflow: hidden;
+}
+[data-material="metallic"] [cmdk-group-heading],
+[data-material="metallic"] [data-slot="command-group"] [cmdk-group-heading] {
+  font: 500 12px/16px var(--font-mono, ui-monospace, monospace);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+[data-material="metallic"] [data-slot="command-input-wrapper"] {
+  border-bottom: 1px solid color-mix(in oklch, var(--metallic-edge) 40%, transparent);
+  box-shadow: 0 1px 0 var(--metallic-seam-light);
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+}
+[data-material="metallic"] [data-slot="command-separator"] {
+  background: var(--metallic-edge-quiet);
+  box-shadow: 0 1px 0 var(--metallic-seam-light);
+}
+[data-material="metallic"] [data-slot="command-shortcut"] {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  letter-spacing: .04em;
+}
+
+/* Table: markings on the head (opt-in), a steel left edge on selected rows, flat checkboxes. */
+[data-material="metallic"] table[data-markings] [data-slot="table-head"] {
+  font: 500 12px/16px var(--font-mono, ui-monospace, monospace);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted-foreground);
+}
+[data-material="metallic"] [data-slot="table-row"][data-state="selected"] > [data-slot="table-cell"]:first-child { box-shadow: inset 3px 0 0 var(--metallic-edge), inset 0 -1px 0 var(--metallic-seam-light); }
+[data-material="metallic"] table [data-slot="checkbox"][data-state="indeterminate"] { background: var(--primary); color: var(--primary-foreground); box-shadow: none; }
+
+/* Machined seams: accordion rows and separators get a line with a lit lip below it. */
+[data-material="metallic"] [data-slot="accordion-item"] { border-color: var(--metallic-edge-quiet); box-shadow: 0 1px 0 var(--metallic-seam-light); }
+[data-material="metallic"] [data-slot="separator"][data-orientation="horizontal"] { background: var(--metallic-edge-quiet); box-shadow: 0 1px 0 var(--metallic-seam-light); }
+[data-material="metallic"] [data-slot="separator"][data-orientation="vertical"] { background: var(--metallic-edge-quiet); box-shadow: 1px 0 0 var(--metallic-seam-light); }
+
+/* Progress: a groove with a flat steel-grey fill that never overshoots. */
+[data-material="metallic"] [data-slot="progress"] { box-shadow: var(--metallic-depth-groove); }
+[data-material="metallic"] [data-slot="progress-indicator"] { background: var(--metallic-edge); transition: transform var(--motion-slow) var(--ease-standard), translate var(--motion-slow) var(--ease-standard); }
+
+/* Your own chat message: a steel edge around a calm body. */
+
+/* Button group: quiet buttons joined by steel-grey seams. */
+[data-material="metallic"] [data-slot="button-group"] > :is([data-slot="button"], [data-slot$="-close"], [data-slot$="-trigger"], [data-slot$="-action"], [data-slot$="-cancel"], [data-slot$="-next"], [data-slot$="-previous"], [data-slot$="-submit"], [data-slot$="-skip"])[data-variant="outline"] { border-color: var(--metallic-edge); }
+
+/* Focus for the parts added here. */
+[data-material="metallic"] :is([data-slot="radio-group-item"], [data-slot="pagination-link"], [data-slot="accordion-trigger"]):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* ══ Round 2 (owner feedback 2026-10-14): real-metal panels, machined fields, accordion, chat ══ */
+
+[data-material="metallic"] {
+  /* Brushed aluminium for large surfaces: two grain periods so it doesn't read as stripes, over a soft top light. */
+  --metallic-panel:
+    repeating-linear-gradient(180deg, rgba(255,255,255,.45) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(180deg, rgba(0,0,0,.022) 0 1px, transparent 1px 7px),
+    linear-gradient(180deg, #fbfcfd 0%, #eff1f4 55%, #e6e9ed 100%);
+  /* A brushed tray: footers and composers, one step darker than the panel. */
+  --metallic-tray:
+    repeating-linear-gradient(180deg, rgba(255,255,255,.35) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, #e7eaee, #dde1e6);
+  /* A lighter steel strip for header plates (open accordion row, chat header). */
+  --metallic-strip:
+    repeating-linear-gradient(180deg, rgba(255,255,255,.07) 0 1px, rgba(0,0,0,.035) 1px 2px),
+    linear-gradient(180deg, #f6f8fb 0%, #e3e7ed 50%, #d6dbe2 100%);
+  /* Field frame: a recessed window, so the top lip is in shadow and the bottom lip catches the light. */
+  --metallic-field-frame: linear-gradient(180deg, #7f8693 0%, #aeb4be 40%, #e9ecf0 100%);
+  --metallic-panel-depth: 0 0 0 1px var(--metallic-edge), 0 2px 4px rgba(0,0,0,.14), 0 18px 36px -12px rgba(0,0,0,.42);
+  /*
+   * Every surface has its own text token. Strip, tray and panel follow the PAGE (light or dark); steel plates follow
+   * the STEEL TONE (light or gunmetal) and use --metallic-ink. Never put --metallic-ink on a strip, tray or panel.
+   */
+  --metallic-bar: linear-gradient(180deg, #f5f7fb 0%, #c4c9d3 45%, #8a919c 100%);
+  --metallic-strip-ink: #1c2028;
+  --metallic-tray-ink: #1c2028;
+  --metallic-surface-engrave: 0 1px 0 rgba(255,255,255,.6);
+  /* shadcn's muted grey is 3.9:1 on brushed metal; this one is 5.4:1 on the darkest panel band. */
+  --metallic-panel-muted: #565c66;
+  /* Stock shadcn fails AA here: destructive red on its own tint (3.1–4.0:1) and muted grey on muted (4.35:1). */
+  --metallic-danger-ink: #9f1119;
+  --muted-foreground: oklch(0.5 0 0);
+}
+:is([data-material="metallic"].dark, .dark [data-material="metallic"]) {
+  --metallic-panel:
+    repeating-linear-gradient(180deg, rgba(255,255,255,.035) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(180deg, rgba(0,0,0,.18) 0 1px, transparent 1px 7px),
+    linear-gradient(180deg, #30343b 0%, #25282e 55%, #1f2227 100%);
+  --metallic-tray:
+    repeating-linear-gradient(180deg, rgba(255,255,255,.03) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, #1c1f24, #17191d);
+  --metallic-strip:
+    repeating-linear-gradient(180deg, rgba(255,255,255,.04) 0 1px, rgba(0,0,0,.12) 1px 2px),
+    linear-gradient(180deg, #3d424b 0%, #30343b 50%, #2a2e34 100%);
+  --metallic-field-frame: linear-gradient(180deg, #121417 0%, #3a3f48 45%, #7b818c 100%);
+  --metallic-bar: linear-gradient(180deg, #9aa0ab 0%, #5a616d 45%, #30353d 100%);
+  --metallic-strip-ink: #eef0f3;
+  --metallic-tray-ink: #e8ebf0;
+  --metallic-surface-engrave: 0 -1px 0 rgba(0,0,0,.5);
+  --metallic-panel-muted: #a7adb7;
+  --metallic-danger-ink: #ff9d9d;
+  --muted-foreground: oklch(0.708 0 0);
+}
+
+/* ── Real-metal panels (Panels knob: metal) ─────────────────────────────── */
+/* A brushed-aluminium body inside a polished steel frame. Frame = border painted with steel (border-box layer). */
+/* Muted text inside metal panels uses the panel's own muted token (shadcn's grey is too light on brushed metal). */
+[data-material="metallic"] [data-slot="accordion"] { --muted-foreground: var(--metallic-panel-muted); }
+/* Footers become a brushed tray behind an engraved seam. */
+[data-material="metallic"] :is([data-slot="dialog-footer"], [data-slot="alert-dialog-footer"], [data-slot="sheet-footer"]) {
+  background: var(--metallic-tray);
+  border-top: 1px solid color-mix(in oklch, var(--metallic-edge) 45%, transparent);
+  box-shadow: inset 0 1px 0 var(--metallic-seam-light);
+}
+/* Titles are engraved into the panel. */
+[data-material="metallic"] :is([data-slot="dialog-title"], [data-slot="alert-dialog-title"], [data-slot="sheet-title"], [data-slot="popover-title"]) { text-shadow: var(--metallic-surface-engrave); }
+/* The alert icon sits in a steel bead. */
+[data-material="metallic"] [data-slot="alert-dialog-media"] {
+  background: var(--metallic-steel);
+  color: var(--metallic-ink);
+  box-shadow: var(--metallic-depth-raised), 0 0 0 1px var(--metallic-edge);
+}
+/* Menu highlight on brushed metal: a quiet recessed strip, never steel. */
+[data-material="metallic"] :is([data-slot="select-item"], [data-slot="dropdown-menu-item"], [data-slot="dropdown-menu-checkbox-item"], [data-slot="command-item"], [data-slot="menubar-item"], [data-slot="menubar-checkbox-item"], [data-slot="menubar-radio-item"], [data-slot="menubar-sub-trigger"], [data-slot="context-menu-item"], [data-slot="context-menu-checkbox-item"], [data-slot="context-menu-radio-item"], [data-slot="context-menu-sub-trigger"], [data-slot="combobox-item"], [data-slot="dropdown-menu-sub-trigger"]):is([data-highlighted], [data-selected="true"]) {
+  background: color-mix(in oklch, var(--metallic-edge) 16%, transparent);
+  box-shadow: inset 0 1px 1px rgba(0,0,0,.08);
+}
+
+/* Toasts: a small steel-framed plate. Text colours are set here, so the toast never inherits a theme mismatch. */
+[data-material="metallic"] [data-sonner-toaster] [data-sonner-toast][data-styled="true"] {
+  border: 2px solid transparent;
+  background: var(--metallic-panel) padding-box, var(--metallic-steel) border-box;
+  box-shadow: var(--metallic-panel-depth);
+}
+[data-material="metallic"] [data-sonner-toaster] [data-sonner-toast][data-styled="true"] { color: var(--popover-foreground); }
+[data-material="metallic"] [data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-description] { color: var(--muted-foreground); }
+
+/* ── Machined fields (Fields knob: machined) ────────────────────────────── */
+/* A window cut into steel: a 2px recessed steel frame and an inner shadow. Same outer size (border-box, fixed heights). */
+[data-material="metallic"] :is([data-slot="input"], [data-slot="textarea"], [data-slot="select-trigger"], [data-slot="native-select"], [data-slot="input-group"]) {
+  border: 2px solid transparent;
+  background: var(--metallic-glass), var(--metallic-field-frame) border-box;
+  /* Outer 1px edge keeps the field's outline at 3:1 (decision 7) where the lit lower lip meets a light page. */
+  box-shadow: 0 0 0 1px var(--metallic-edge-quiet), var(--metallic-depth-well);
+}
+[data-material="metallic"] :is([data-slot="input"], [data-slot="textarea"], [data-slot="select-trigger"], [data-slot="native-select"]) { padding-inline: 9px; }
+@media (hover: hover) {
+  [data-material="metallic"] :is([data-slot="input"], [data-slot="textarea"], [data-slot="select-trigger"], [data-slot="native-select"], [data-slot="input-group"]):hover {
+    background: var(--metallic-glass), var(--metallic-field-frame-hover) border-box;
+  }
+}
+/* Inside a machined input group the control is just the window's glass. */
+[data-material="metallic"] [data-slot="input-group"] [data-slot="input-group-control"] { background: transparent; }
+
+/* ── Accordion: a machined panel; the open row is a steel strip; smoother motion ── */
+[data-material="metallic"] [data-slot="accordion"] {
+  border: 1px solid var(--metallic-edge-quiet);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--metallic-panel);
+  box-shadow: inset 0 1px 0 var(--metallic-chamfer);
+}
+[data-material="metallic"] [data-slot="accordion-item"]:last-child { border-bottom: 0; box-shadow: none; }
+[data-material="metallic"] [data-slot="accordion-trigger"] {
+  padding-inline: 12px;
+  border-radius: 0;
+  text-decoration: none;
+  transition: background-color var(--motion-fast) var(--ease-standard), color var(--motion-height) var(--ease-height);
+}
+@media (hover: hover) {
+  [data-material="metallic"] [data-slot="accordion-trigger"]:hover { background-color: color-mix(in oklch, var(--metallic-edge) 8%, transparent); }
+}
+/* The steel strip lives on its own layer so it can fade with the height (gradients can't transition). */
+[data-material="metallic"] [data-slot="accordion-trigger"] { isolation: isolate; }
+[data-material="metallic"] [data-slot="accordion-trigger"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--metallic-strip);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.85), inset 0 -1px 0 rgba(0,0,0,.14);
+  opacity: 0;
+  transition: opacity var(--motion-height) var(--ease-height);
+}
+:is([data-material="metallic"].dark, .dark [data-material="metallic"]) [data-slot="accordion-trigger"]::before { box-shadow: inset 0 1px 0 rgba(255,255,255,.08), inset 0 -1px 0 rgba(0,0,0,.4); }
+[data-material="metallic"] [data-slot="accordion-trigger"][data-state="open"]::before { opacity: 1; }
+[data-material="metallic"] [data-slot="accordion-trigger"][data-state="open"] { color: var(--metallic-strip-ink); text-shadow: var(--metallic-surface-engrave); }
+[data-material="metallic"] [data-slot="accordion-trigger"]:focus-visible { outline-offset: -3px; }
+/* One chevron that rotates, instead of two icons that swap. */
+[data-material="metallic"] [data-slot="accordion-trigger"] > [data-slot="accordion-trigger-icon"]:first-of-type { display: block; transition: rotate var(--motion-travel) var(--ease-travel); }
+[data-material="metallic"] [data-slot="accordion-trigger"][data-state="open"] > [data-slot="accordion-trigger-icon"]:first-of-type { rotate: 180deg; }
+[data-material="metallic"] [data-slot="accordion-trigger"] > [data-slot="accordion-trigger-icon"]:last-of-type { display: none; }
+/* The opened content is a recessed well; height eases open, the text fades in just behind it. */
+[data-material="metallic"] [data-slot="accordion-content"] {
+  padding-inline: 12px;
+  background: color-mix(in oklch, var(--background) 70%, transparent);
+  box-shadow: inset 0 2px 3px -2px rgba(0,0,0,.22);
+}
+/*
+ * Height (round 7). Opening and closing share one duration and one curve, so when one row closes as another opens
+ * the two heights trade evenly and the panel's total height doesn't wobble. The padding is the same in both states:
+ * it used to appear only when open, so closing dropped the text 10px in the first frame (the twitch).
+ */
+[data-material="metallic"] [data-slot="accordion-content"]:is([data-state="open"], [data-state="closed"], [data-open], [data-closed]) { animation-duration: var(--motion-height); animation-timing-function: var(--ease-height); }
+[data-material="metallic"] [data-slot="accordion-content"] > div { padding-top: 10px; }
+/* The text settles into the well with the travel curve (a soft drop in Soft), and fades as the well closes. */
+[data-material="metallic"] [data-slot="accordion-content"][data-state="open"] > div { animation: metallic-settle-in var(--motion-travel) var(--ease-travel) calc(var(--motion-height) * .25) both; }
+[data-material="metallic"] [data-slot="accordion-content"][data-state="closed"] > div { animation: metallic-settle-out calc(var(--motion-height) * .6) var(--ease-height) both; }
+@keyframes metallic-settle-out { to { opacity: 0; } }
+@keyframes metallic-settle-in {
+  from { opacity: 0; translate: 0 -4px; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+
+/* The header is a steel name plate with a status light. */
+/* Avatars are steel beads with an engraved glyph. */
+/* Your own message is a light steel plate. Body text is not engraved (engraving blurs running text). */
+/* Tool trace: small engraved tags stamped into the panel. */
+/* Sources: small steel plates. */
+/* The composer sits in a brushed tray. */
+/* Status light: colour carries meaning here, and the word always sits beside it. */
+[data-material="metallic"] [data-led] > i { display: block; width: 8px; height: 8px; border-radius: 999px; background: #2f9e5b; box-shadow: 0 0 0 1px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.5), 0 0 6px rgba(47,158,91,.6); }
+[data-material="metallic"] [data-led="busy"] > i { background: #d99a1e; box-shadow: 0 0 0 1px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.5), 0 0 6px rgba(217,154,30,.65); animation: metallic-led calc(1200ms * var(--motion-scale, 1)) ease-in-out infinite; }
+@keyframes metallic-led { 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { [data-material="metallic"] [data-led] > i { animation: none; opacity: 1; } }
+
+/* ── Tabs, more metallic (round 3) ──────────────────────────────────────── */
+/* Default tabs: a machined channel. Inactive labels are stamped into the tray; the active tab is a raised steel plate. */
+[data-material="metallic"] [data-slot="tabs-list"][data-variant="default"] {
+  background: var(--metallic-tray);
+  border: 1px solid var(--metallic-edge-quiet);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.2), inset 0 -1px 0 rgba(255,255,255,.35), 0 1px 0 var(--metallic-seam-light);
+}
+[data-material="metallic"] [data-slot="tabs-list"][data-variant="default"] [data-slot="tabs-trigger"]:not([data-state="active"]) {
+  color: color-mix(in oklch, var(--metallic-tray-ink) 78%, transparent);
+  text-shadow: var(--metallic-surface-engrave);
+}
+@media (hover: hover) {
+  [data-material="metallic"] [data-slot="tabs-list"][data-variant="default"] [data-slot="tabs-trigger"]:not([data-state="active"]):hover { color: var(--metallic-tray-ink); background: color-mix(in oklch, var(--metallic-tray-ink) 7%, transparent); }
+}
+[data-material="metallic"] [data-slot="tabs-list"][data-variant="default"] [data-slot="tabs-trigger"][data-state="active"] { border-color: var(--metallic-edge); }
+
+/* Line tabs: a machined rail under the whole row, and the active tab's mark is a polished steel bar sitting on it. */
+[data-material="metallic"] [data-slot="tabs-list"][data-variant="line"] { box-shadow: inset 0 -1px 0 var(--metallic-edge-quiet), 0 1px 0 var(--metallic-seam-light); }
+[data-material="metallic"] [data-slot="tabs-list"][data-variant="line"] [data-slot="tabs-trigger"]::after {
+  height: 3px;
+  bottom: -4px;
+  border-radius: 2px;
+  background: var(--metallic-bar);
+  box-shadow: 0 0 0 1px var(--metallic-edge), 0 1px 1px rgba(0,0,0,.25);
+  /*
+   * The bar doesn't fade: it travels from the old tab to the new one (spike-chrome's glide animates left and right,
+   * the trailing edge lagging by --motion-stretch). This transition only carries the duration and curve it reads.
+   */
+  transition: left var(--motion-travel) var(--ease-travel), right var(--motion-travel) var(--ease-travel);
+}
+[data-material="metallic"] [data-slot="tabs-list"][data-variant="line"] [data-slot="tabs-trigger"] { transition: color var(--motion-travel) var(--ease-standard), text-shadow var(--motion-travel) var(--ease-standard); }
+[data-material="metallic"] [data-slot="tabs-list"][data-variant="line"] [data-slot="tabs-trigger"][data-state="active"] { color: var(--foreground); text-shadow: var(--metallic-surface-engrave); }
+
+/* ══ Round 5: one finish, silver glass fields, satin quiet controls, one error rule, the table ══ */
+
+/*
+ * Finish (data-finish: textured | smooth). Every metal surface = a grain layer over a base layer. Smooth removes
+ * the grain everywhere at once and keeps the same light, bevels and frames. Composites live here so both modes
+ * and both finishes resolve from one place.
+ */
+[data-material="metallic"] {
+  --metallic-grain-steel: repeating-linear-gradient(180deg, rgba(255,255,255,.07) 0 1px, rgba(0,0,0,.05) 1px 2px);
+  --metallic-steel-base: linear-gradient(180deg, #f5f7fb 0%, #d3d8e1 34%, #a2a9b6 52%, #c4c9d3 76%, #eef0f4 100%);
+  --metallic-grain-panel: repeating-linear-gradient(180deg, rgba(255,255,255,.45) 0 1px, transparent 1px 3px), repeating-linear-gradient(180deg, rgba(0,0,0,.022) 0 1px, transparent 1px 7px);
+  --metallic-panel-base: linear-gradient(180deg, #fbfcfd 0%, #eff1f4 55%, #e6e9ed 100%);
+  --metallic-grain-tray: repeating-linear-gradient(180deg, rgba(255,255,255,.35) 0 1px, transparent 1px 3px);
+  --metallic-tray-base: linear-gradient(180deg, #e7eaee, #dde1e6);
+  --metallic-grain-strip: repeating-linear-gradient(180deg, rgba(255,255,255,.07) 0 1px, rgba(0,0,0,.035) 1px 2px);
+  --metallic-strip-base: linear-gradient(180deg, #f6f8fb 0%, #e3e7ed 50%, #d6dbe2 100%);
+  /* Satin: raised quiet controls (outline and secondary buttons, unselected toggles and chips, keys). */
+  --metallic-grain-satin: repeating-linear-gradient(180deg, rgba(255,255,255,.5) 0 1px, transparent 1px 3px);
+  --metallic-satin-base: linear-gradient(180deg, #ffffff 0%, #f3f5f7 55%, #e9ecef 100%);
+  --metallic-depth-satin: inset 0 1px 0 rgba(255,255,255,.95), 0 1px 1px rgba(0,0,0,.1);
+
+  --metallic-steel: var(--metallic-grain-steel), var(--metallic-steel-base);
+  --metallic-panel: var(--metallic-grain-panel), var(--metallic-panel-base);
+  --metallic-tray: var(--metallic-grain-tray), var(--metallic-tray-base);
+  --metallic-strip: var(--metallic-grain-strip), var(--metallic-strip-base);
+  --metallic-satin: var(--metallic-grain-satin), var(--metallic-satin-base);
+
+  /* Silver glass for fields: recessed (shadow at the top) with one soft reflection. Both layers clip to the glass. */
+  --metallic-glass: linear-gradient(105deg, transparent 32%, rgba(255,255,255,.6) 44%, transparent 58%) padding-box, linear-gradient(180deg, #e2e6eb 0%, #eef1f4 32%, #f8f9fb 100%) padding-box;
+  --metallic-field-frame-hover: linear-gradient(180deg, #6f7685 0%, #9aa1ac 40%, #e9ecf0 100%);
+
+  /* Errors (decision 19): hatching follows the finish; tarnish is flat and matte (no shine), darker than the glass. */
+  --metallic-tarnish-fill: linear-gradient(#d2d6dc, #d2d6dc) padding-box;
+  --metallic-hatch-full: repeating-linear-gradient(135deg, color-mix(in oklch, var(--metallic-edge) 45%, transparent) 0 1px, transparent 1px 6px) padding-box;
+  --metallic-hatch-strip: repeating-linear-gradient(135deg, var(--metallic-edge) 0 1.5px, transparent 1.5px 6px) left center / 6px 100% no-repeat padding-box;
+  --metallic-hatch: var(--metallic-hatch-full);
+}
+:is([data-material="metallic"].dark, .dark [data-material="metallic"]) {
+  --metallic-grain-steel: repeating-linear-gradient(180deg, rgba(255,255,255,.05) 0 1px, rgba(0,0,0,.08) 1px 2px);
+  --metallic-steel-base: linear-gradient(180deg, #5a616d 0%, #3a3f48 34%, #262a31 52%, #30353d 76%, #4a505a 100%);
+  --metallic-grain-panel: repeating-linear-gradient(180deg, rgba(255,255,255,.035) 0 1px, transparent 1px 3px), repeating-linear-gradient(180deg, rgba(0,0,0,.18) 0 1px, transparent 1px 7px);
+  --metallic-panel-base: linear-gradient(180deg, #30343b 0%, #25282e 55%, #1f2227 100%);
+  --metallic-grain-tray: repeating-linear-gradient(180deg, rgba(255,255,255,.03) 0 1px, transparent 1px 3px);
+  --metallic-tray-base: linear-gradient(180deg, #1c1f24, #17191d);
+  --metallic-grain-strip: repeating-linear-gradient(180deg, rgba(255,255,255,.04) 0 1px, rgba(0,0,0,.12) 1px 2px);
+  --metallic-strip-base: linear-gradient(180deg, #3d424b 0%, #30343b 50%, #2a2e34 100%);
+  --metallic-grain-satin: repeating-linear-gradient(180deg, rgba(255,255,255,.025) 0 1px, transparent 1px 3px);
+  --metallic-satin-base: linear-gradient(180deg, #2b2f35 0%, #24272c 55%, #1f2226 100%);
+  --metallic-depth-satin: inset 0 1px 0 rgba(255,255,255,.07), 0 1px 1px rgba(0,0,0,.5);
+  --metallic-steel: var(--metallic-grain-steel), var(--metallic-steel-base);
+  --metallic-panel: var(--metallic-grain-panel), var(--metallic-panel-base);
+  --metallic-tray: var(--metallic-grain-tray), var(--metallic-tray-base);
+  --metallic-strip: var(--metallic-grain-strip), var(--metallic-strip-base);
+  --metallic-satin: var(--metallic-grain-satin), var(--metallic-satin-base);
+  --metallic-glass: linear-gradient(105deg, transparent 32%, rgba(255,255,255,.045) 44%, transparent 58%) padding-box, linear-gradient(180deg, #111316 0%, #171a1e 35%, #1d2025 100%) padding-box;
+  --metallic-field-frame-hover: linear-gradient(180deg, #0e1013 0%, #4a505a 45%, #9aa0ab 100%);
+  --metallic-tarnish-fill: linear-gradient(#2b2e34, #2b2e34) padding-box;
+}
+[data-material="metallic"][data-finish="smooth"] {
+  --metallic-grain-steel: linear-gradient(transparent, transparent);
+  --metallic-grain-panel: linear-gradient(transparent, transparent);
+  --metallic-grain-tray: linear-gradient(transparent, transparent);
+  --metallic-grain-strip: linear-gradient(transparent, transparent);
+  --metallic-grain-satin: linear-gradient(transparent, transparent);
+  /* Smooth hatching: one clean strip on the leading edge instead of a fine hatch across the field. */
+  --metallic-hatch: var(--metallic-hatch-strip);
+}
+
+/* ── Silver glass on every field, including the verification code ───────── */
+[data-material="metallic"] :is([data-slot="input-otp-slot"], [data-slot="textarea"]) { background: var(--metallic-glass); }
+[data-material="metallic"] [data-slot="input-otp-slot"] { border-color: var(--metallic-edge-quiet); box-shadow: var(--metallic-depth-well); }
+/* Unchecked checkboxes and radios are small recessed windows too. */
+[data-material="metallic"] :is([data-slot="checkbox"], [data-slot="radio-group-item"]):not([data-state="checked"], [data-state="indeterminate"], [data-checked]) { background: var(--metallic-glass); }
+
+/* ── Satin: one look for every quiet control ─────────────────────────────── */
+[data-material="metallic"] :is(
+    :is([data-slot="button"], [data-slot$="-close"], [data-slot$="-trigger"], [data-slot$="-action"], [data-slot$="-cancel"], [data-slot$="-next"], [data-slot$="-previous"], [data-slot$="-submit"], [data-slot$="-skip"]):is([data-variant="outline"], [data-variant="secondary"]),
+    [data-slot="badge"]:is([data-variant="outline"], [data-variant="secondary"]),
+    [data-slot="kbd"],
+    [data-slot="toggle-group"][data-variant="outline"] [data-slot="toggle-group-item"]:not([data-state="on"]),
+    [data-slot="toggle"][data-variant="outline"]:not([data-state="on"]),
+    [data-slot="chip-group-item"]:not([data-state="on"])
+  ) {
+  background: var(--metallic-satin);
+  border-color: var(--metallic-edge-quiet);
+  box-shadow: var(--metallic-depth-satin);
+  color: var(--foreground);
+  transition: filter var(--motion-release) var(--ease-standard), box-shadow var(--motion-release) var(--ease-standard), translate var(--motion-release) var(--ease-travel), border-color var(--motion-fast) var(--ease-standard);
+}
+[data-material="metallic"] [data-slot="kbd"] { color: var(--muted-foreground); }
+@media (hover: hover) {
+  [data-material="metallic"] :is(
+      :is([data-slot="button"], [data-slot$="-close"], [data-slot$="-trigger"], [data-slot$="-action"], [data-slot$="-cancel"], [data-slot$="-next"], [data-slot$="-previous"], [data-slot$="-submit"], [data-slot$="-skip"]):is([data-variant="outline"], [data-variant="secondary"]),
+      [data-slot="toggle-group"][data-variant="outline"] [data-slot="toggle-group-item"]:not([data-state="on"]),
+      [data-slot="chip-group-item"]:not([data-state="on"])
+    ):hover:not(:disabled) { border-color: var(--metallic-edge-hover); filter: brightness(1.02); }
+}
+/* The same 1px press as steel plates. */
+[data-material="metallic"] :is(
+    :is([data-slot="button"], [data-slot$="-close"], [data-slot$="-trigger"], [data-slot$="-action"], [data-slot$="-cancel"], [data-slot$="-next"], [data-slot$="-previous"], [data-slot$="-submit"], [data-slot$="-skip"]):is([data-variant="outline"], [data-variant="secondary"]),
+    [data-slot="toggle-group"][data-variant="outline"] [data-slot="toggle-group-item"],
+    [data-slot="chip-group-item"]
+  ):active:not(:disabled, [aria-haspopup]) {
+  translate: 0 1px;
+  box-shadow: var(--metallic-depth-pressed);
+  transition-duration: var(--motion-press);
+}
+
+/* ── One error rule for every control that can be invalid ───────────────── */
+/* Fields (inside the machined frame): hatching + tarnish. */
+[data-material="metallic"] :is([data-slot="input"], [data-slot="textarea"], [data-slot="select-trigger"], [data-slot="native-select"])[aria-invalid="true"], [data-material="metallic"] [data-slot="input-group"]:has([aria-invalid="true"]) {
+  background: var(--metallic-hatch), var(--metallic-tarnish-fill), var(--metallic-field-frame) border-box;
+  box-shadow: 0 0 0 1px var(--metallic-edge), inset 0 1px 3px rgba(0,0,0,.26);
+}
+/* Small parts (OTP slots, checkbox, radio, switch): a strip won't fit, so always the fine hatch. */
+[data-material="metallic"] :is([data-slot="input-otp-slot"], [data-slot="checkbox"], [data-slot="radio-group-item"], [data-slot="switch"])[aria-invalid="true"] {
+  background: var(--metallic-hatch-full), var(--metallic-tarnish-fill);
+  border-color: var(--metallic-edge);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.26);
+}
+[data-material="metallic"] :is([data-slot="checkbox"], [data-slot="radio-group-item"], [data-slot="switch"])[aria-invalid="true"]:is([data-state="checked"], [data-checked]) {
+  background: var(--metallic-hatch-full), var(--metallic-tarnish);
+}
+
+/* ── Table: a machined panel ──────────────────────────────────────────────── */
+/*
+ * Chrome paints a row's background cell by cell, which leaves hairline seams at fractional column edges. So the
+ * header strip is painted once on the panel, sized to the header row (2.5rem), and row tints go on the cells.
+ * Size and repeat lists cover the longest layer stack (strip 2 + textured panel 3).
+ */
+[data-material="metallic"] [data-slot="table-container"] {
+  border: 1px solid var(--metallic-edge-quiet);
+  border-radius: var(--radius-lg);
+  background-image: var(--metallic-strip), var(--metallic-panel);
+  background-size: 100% 2.5rem, 100% 2.5rem, auto, auto, auto;
+  background-repeat: no-repeat, no-repeat, repeat, repeat, repeat;
+  box-shadow: inset 0 1px 0 var(--metallic-chamfer), 0 1px 2px rgba(0,0,0,.08);
+  --muted-foreground: var(--metallic-panel-muted);
+}
+/* Header: a steel strip with engraved column names. */
+[data-material="metallic"] [data-slot="table-header"] [data-slot="table-row"] {
+  background: none;
+  border-bottom: 1px solid color-mix(in oklch, var(--metallic-edge) 55%, transparent);
+}
+[data-material="metallic"] [data-slot="table-header"] [data-slot="table-head"] { box-shadow: inset 0 1px 0 rgba(255,255,255,.75); }
+:is([data-material="metallic"].dark, .dark [data-material="metallic"]) [data-slot="table-header"] [data-slot="table-head"] { box-shadow: inset 0 1px 0 rgba(255,255,255,.06); }
+/* Header labels sit on the strip, so they use the strip's ink (more specific than the markings rule's muted grey). */
+[data-material="metallic"] [data-slot="table-container"] [data-slot="table-header"] [data-slot="table-head"] { color: var(--metallic-strip-ink); text-shadow: var(--metallic-surface-engrave); }
+/* Rows: machined seams (a line with a lit lip), a quiet hover, a tinted selected row with the steel edge. */
+[data-material="metallic"] [data-slot="table-body"] [data-slot="table-row"] { border-bottom-color: color-mix(in oklch, var(--metallic-edge-quiet) 55%, transparent); }
+[data-material="metallic"] [data-slot="table-body"] [data-slot="table-row"] > [data-slot="table-cell"] { box-shadow: inset 0 -1px 0 var(--metallic-seam-light); }
+[data-material="metallic"] [data-slot="table-body"] [data-slot="table-row"]:last-child { border-bottom: 0; }
+[data-material="metallic"] [data-slot="table-body"] [data-slot="table-row"]:is(:hover, [data-state="selected"]) { background: none; }
+/*
+ * Hover (round 7): the tint and a thin steel edge come up quickly and drain away slowly, so moving down a table
+ * leaves a short fading trail. Leaving uses the base transition (slow); arriving uses the :hover one (fast).
+ */
+[data-material="metallic"] [data-slot="table-body"] [data-slot="table-row"] > [data-slot="table-cell"] {
+  transition: background-color calc(360ms * var(--motion-scale)) var(--ease-standard), box-shadow calc(360ms * var(--motion-scale)) var(--ease-standard);
+}
+[data-material="metallic"] [data-slot="table-body"] [data-slot="table-row"]:hover > [data-slot="table-cell"] {
+  background: color-mix(in oklch, var(--metallic-edge) 7%, transparent);
+  transition-duration: var(--motion-fast);
+}
+[data-material="metallic"] [data-slot="table-body"] [data-slot="table-row"]:not([data-state="selected"]) > [data-slot="table-cell"]:first-child { box-shadow: inset 0 0 0 transparent, inset 0 -1px 0 var(--metallic-seam-light); }
+[data-material="metallic"] [data-slot="table-body"] [data-slot="table-row"]:not([data-state="selected"]):hover > [data-slot="table-cell"]:first-child { box-shadow: inset 2px 0 0 color-mix(in oklch, var(--metallic-edge) 70%, transparent), inset 0 -1px 0 var(--metallic-seam-light); }
+[data-material="metallic"] [data-slot="table-body"] [data-slot="table-row"][data-state="selected"] > [data-slot="table-cell"] { background: color-mix(in oklch, var(--metallic-edge) 13%, transparent); }
+/* Status lights in cells: colour plus the word. */
+[data-material="metallic"] [data-led="error"] > i { background: #d64545; box-shadow: 0 0 0 1px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.45), 0 0 6px rgba(214,69,69,.6); }
+[data-material="metallic"] [data-led="error"] { color: var(--metallic-danger-ink); }
+
+/* ══ Round 6: theme dials. Every dial is a token set on <html>, so each one reaches every component at once. ══ */
+
+/* Defaults: Steel alloy, Polished, Bevelled depth, Fine grain. */
+[data-material="metallic"] {
+  --alloy-c: #ffffff;
+  --alloy-k: 0%;
+  --depth: 1;
+  --metallic-steel-base: linear-gradient(180deg, color-mix(in oklch, #f5f7fb, var(--alloy-c) var(--alloy-k)) 0%, color-mix(in oklch, #d3d8e1, var(--alloy-c) var(--alloy-k)) 34%, color-mix(in oklch, #a2a9b6, var(--alloy-c) var(--alloy-k)) 52%, color-mix(in oklch, #c4c9d3, var(--alloy-c) var(--alloy-k)) 76%, color-mix(in oklch, #eef0f4, var(--alloy-c) var(--alloy-k)) 100%);
+  --metallic-strip-base: linear-gradient(180deg, color-mix(in oklch, #f6f8fb, var(--alloy-c) var(--alloy-k)) 0%, color-mix(in oklch, #e3e7ed, var(--alloy-c) var(--alloy-k)) 50%, color-mix(in oklch, #d6dbe2, var(--alloy-c) var(--alloy-k)) 100%);
+  --metallic-panel-base: linear-gradient(180deg, color-mix(in oklch, #fbfcfd, var(--alloy-c) var(--alloy-k)) 0%, color-mix(in oklch, #eff1f4, var(--alloy-c) var(--alloy-k)) 55%, color-mix(in oklch, #e6e9ed, var(--alloy-c) var(--alloy-k)) 100%);
+  --metallic-tray-base: linear-gradient(180deg, color-mix(in oklch, #e7eaee, var(--alloy-c) var(--alloy-k)) 0%, color-mix(in oklch, #dde1e6, var(--alloy-c) var(--alloy-k)) 100%);
+  --metallic-satin-base: linear-gradient(180deg, color-mix(in oklch, #ffffff, var(--alloy-c) var(--alloy-k)) 0%, color-mix(in oklch, #f3f5f7, var(--alloy-c) var(--alloy-k)) 55%, color-mix(in oklch, #e9ecef, var(--alloy-c) var(--alloy-k)) 100%);
+  --metallic-glass: linear-gradient(105deg, transparent 32%, rgba(255,255,255,.6) 44%, transparent 58%) padding-box, linear-gradient(180deg, color-mix(in oklch, #e2e6eb, var(--alloy-c) var(--alloy-k)) 0%, color-mix(in oklch, #eef1f4, var(--alloy-c) var(--alloy-k)) 32%, color-mix(in oklch, #f8f9fb, var(--alloy-c) var(--alloy-k)) 100%) padding-box;
+  --metallic-bar: linear-gradient(180deg, color-mix(in oklch, #f5f7fb, var(--alloy-c) var(--alloy-k)) 0%, color-mix(in oklch, #c4c9d3, var(--alloy-c) var(--alloy-k)) 45%, color-mix(in oklch, #8a919c, var(--alloy-c) var(--alloy-k)) 100%);
+  --metallic-field-frame: linear-gradient(180deg, color-mix(in oklch, #7f8693, var(--alloy-c) var(--alloy-k)) 0%, color-mix(in oklch, #aeb4be, var(--alloy-c) var(--alloy-k)) 40%, color-mix(in oklch, #e9ecf0, var(--alloy-c) var(--alloy-k)) 100%);
+  --metallic-depth-raised: inset 0 1px 0 rgb(255 255 255 / calc(.9 * var(--depth))), inset 0 -1px 0 rgb(0 0 0 / calc(.22 * var(--depth))), 0 calc(1px * var(--depth)) calc(2px * var(--depth)) rgb(0 0 0 / calc(.45 * var(--depth)));
+  --metallic-depth-raised-flush: inset 0 1px 0 rgb(255 255 255 / calc(.9 * var(--depth))), inset 0 -1px 0 rgb(0 0 0 / calc(.22 * var(--depth)));
+  --metallic-depth-pressed: inset 0 1px calc(2px * var(--depth)) rgb(0 0 0 / calc(.35 * var(--depth))), inset 0 -1px 0 rgb(255 255 255 / calc(.5 * var(--depth)));
+  --metallic-depth-groove: inset 0 1px calc(2px * var(--depth)) rgb(0 0 0 / calc(.2 * var(--depth))), 0 1px 0 var(--metallic-seam-light);
+  --metallic-depth-well: inset 0 1px calc(2px * var(--depth)) rgb(0 0 0 / calc(.16 * var(--depth)));
+  --metallic-depth-satin: inset 0 1px 0 rgb(255 255 255 / calc(.95 * var(--depth))), 0 1px calc(1px * var(--depth)) rgb(0 0 0 / calc(.1 * var(--depth)));
+  --metallic-panel-depth: 0 0 0 1px var(--metallic-edge), 0 calc(2px * var(--depth)) calc(4px * var(--depth)) rgb(0 0 0 / calc(.14 * var(--depth))), 0 calc(18px * var(--depth)) calc(36px * var(--depth)) calc(-12px * var(--depth)) rgb(0 0 0 / calc(.42 * var(--depth)));
+}
+:is([data-material="metallic"].dark, .dark [data-material="metallic"]) {
+  --metallic-steel-base: linear-gradient(180deg, color-mix(in oklch, #5a616d, var(--alloy-c) var(--alloy-k)) 0%, color-mix(in oklch, #3a3f48, var(--alloy-c) var(--alloy-k)) 34%, color-mix(in oklch, #262a31, var(--alloy-c) var(--alloy-k)) 52%, color-mix(in oklch, #30353d, var(--alloy-c) var(--alloy-k)) 76%, color-mix(in oklch, #4a505a, var(--alloy-c) var(--alloy-k)) 100%);
+  --metallic-strip-base: linear-gradient(180deg, color-mix(in oklch, #3d424b, var(--alloy-c) var(--alloy-k)) 0%, color-mix(in oklch, #30343b, var(--alloy-c) var(--alloy-k)) 50%, color-mix(in oklch, #2a2e34, var(--alloy-c) var(--alloy-k)) 100%);
+  --metallic-panel-base: linear-gradient(180deg, color-mix(in oklch, #30343b, var(--alloy-c) var(--alloy-k)) 0%, color-mix(in oklch, #25282e, var(--alloy-c) var(--alloy-k)) 55%, color-mix(in oklch, #1f2227, var(--alloy-c) var(--alloy-k)) 100%);
+  --metallic-tray-base: linear-gradient(180deg, color-mix(in oklch, #1c1f24, var(--alloy-c) var(--alloy-k)) 0%, color-mix(in oklch, #17191d, var(--alloy-c) var(--alloy-k)) 100%);
+  --metallic-satin-base: linear-gradient(180deg, color-mix(in oklch, #2b2f35, var(--alloy-c) var(--alloy-k)) 0%, color-mix(in oklch, #24272c, var(--alloy-c) var(--alloy-k)) 55%, color-mix(in oklch, #1f2226, var(--alloy-c) var(--alloy-k)) 100%);
+  --metallic-glass: linear-gradient(105deg, transparent 32%, rgba(255,255,255,.045) 44%, transparent 58%) padding-box, linear-gradient(180deg, color-mix(in oklch, #111316, var(--alloy-c) var(--alloy-k)) 0%, color-mix(in oklch, #171a1e, var(--alloy-c) var(--alloy-k)) 35%, color-mix(in oklch, #1d2025, var(--alloy-c) var(--alloy-k)) 100%) padding-box;
+  --metallic-bar: linear-gradient(180deg, color-mix(in oklch, #9aa0ab, var(--alloy-c) var(--alloy-k)) 0%, color-mix(in oklch, #5a616d, var(--alloy-c) var(--alloy-k)) 45%, color-mix(in oklch, #30353d, var(--alloy-c) var(--alloy-k)) 100%);
+  --metallic-field-frame: linear-gradient(180deg, color-mix(in oklch, #121417, var(--alloy-c) var(--alloy-k)) 0%, color-mix(in oklch, #3a3f48, var(--alloy-c) var(--alloy-k)) 45%, color-mix(in oklch, #7b818c, var(--alloy-c) var(--alloy-k)) 100%);
+  --metallic-depth-raised: inset 0 1px 0 rgb(255 255 255 / calc(.18 * var(--depth))), inset 0 -1px 0 rgb(0 0 0 / calc(.4 * var(--depth))), 0 calc(1px * var(--depth)) calc(2px * var(--depth)) rgb(0 0 0 / calc(.6 * var(--depth)));
+  --metallic-depth-raised-flush: inset 0 1px 0 rgb(255 255 255 / calc(.18 * var(--depth))), inset 0 -1px 0 rgb(0 0 0 / calc(.4 * var(--depth)));
+  --metallic-depth-pressed: inset 0 1px calc(2px * var(--depth)) rgb(0 0 0 / calc(.55 * var(--depth))), inset 0 -1px 0 rgb(255 255 255 / calc(.08 * var(--depth)));
+  --metallic-depth-groove: inset 0 1px calc(2px * var(--depth)) rgb(0 0 0 / calc(.45 * var(--depth))), 0 1px 0 var(--metallic-seam-light);
+  --metallic-depth-well: inset 0 1px calc(2px * var(--depth)) rgb(0 0 0 / calc(.4 * var(--depth)));
+  --metallic-depth-satin: inset 0 1px 0 rgb(255 255 255 / calc(.07 * var(--depth))), 0 1px calc(1px * var(--depth)) rgb(0 0 0 / calc(.5 * var(--depth)));
+  --metallic-panel-depth: 0 0 0 1px var(--metallic-edge), 0 calc(2px * var(--depth)) calc(4px * var(--depth)) rgb(0 0 0 / calc(.3 * var(--depth))), 0 calc(18px * var(--depth)) calc(36px * var(--depth)) calc(-12px * var(--depth)) rgb(0 0 0 / calc(.6 * var(--depth)));
+}
+
+/* Polish: how reflective the steel is (band contrast and sweep strength). Dark Mirror's top band is held at AA for its ink. */
+[data-material="metallic"][data-polish="satin"] {
+  --metallic-steel-base: linear-gradient(180deg, color-mix(in oklch, #eef1f5, var(--alloy-c) var(--alloy-k)) 0%, color-mix(in oklch, #dfe3e9, var(--alloy-c) var(--alloy-k)) 34%, color-mix(in oklch, #c4c9d1, var(--alloy-c) var(--alloy-k)) 52%, color-mix(in oklch, #d5d9df, var(--alloy-c) var(--alloy-k)) 76%, color-mix(in oklch, #eaedf1, var(--alloy-c) var(--alloy-k)) 100%);
+  --metallic-sheen: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.45) 50%, transparent 65%);
+}
+:is([data-material="metallic"].dark, .dark [data-material="metallic"])[data-polish="satin"] { --metallic-steel-base: linear-gradient(180deg, color-mix(in oklch, #4a505a, var(--alloy-c) var(--alloy-k)) 0%, color-mix(in oklch, #383d45, var(--alloy-c) var(--alloy-k)) 34%, color-mix(in oklch, #2c3036, var(--alloy-c) var(--alloy-k)) 52%, color-mix(in oklch, #33373e, var(--alloy-c) var(--alloy-k)) 76%, color-mix(in oklch, #42474f, var(--alloy-c) var(--alloy-k)) 100%); }
+[data-material="metallic"][data-polish="mirror"] {
+  --metallic-steel-base: linear-gradient(180deg, color-mix(in oklch, #ffffff, var(--alloy-c) var(--alloy-k)) 0%, color-mix(in oklch, #dde2e9, var(--alloy-c) var(--alloy-k)) 28%, color-mix(in oklch, #8e96a4, var(--alloy-c) var(--alloy-k)) 50%, color-mix(in oklch, #c8cdd6, var(--alloy-c) var(--alloy-k)) 72%, color-mix(in oklch, #fbfcfd, var(--alloy-c) var(--alloy-k)) 100%);
+  --metallic-sheen: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.95) 50%, transparent 65%);
+}
+:is([data-material="metallic"].dark, .dark [data-material="metallic"])[data-polish="mirror"] { --metallic-steel-base: linear-gradient(180deg, color-mix(in oklch, #606774, var(--alloy-c) var(--alloy-k)) 0%, color-mix(in oklch, #3b414a, var(--alloy-c) var(--alloy-k)) 30%, color-mix(in oklch, #191c21, var(--alloy-c) var(--alloy-k)) 50%, color-mix(in oklch, #2c3138, var(--alloy-c) var(--alloy-k)) 72%, color-mix(in oklch, #5a616d, var(--alloy-c) var(--alloy-k)) 100%); }
+/*
+ * Alloy: twelve distinct metals. Steel is the original (exact hex bands above). Every other alloy builds its plate
+ * from oklch bands: lightness comes from Polish (and the page mode), hue and chroma from the alloy, plus an optional
+ * flatten (matte metals) and lift (brighter or darker metals). Light mode = lighter metal with dark ink; dark mode =
+ * deep anodized metal with light ink. All 72 alloy x polish x mode plates keep the ink at 4.9:1 or better.
+ * Large surfaces only get a faint hint of the alloy (--alloy-k), so a red theme never turns the page red.
+ */
+[data-material="metallic"] {
+  --band-mid: .85; --band-1: .97; --band-2: .88; --band-3: .72; --band-4: .82; --band-5: .95;
+  --alloy-flat: 1; --alloy-lift: 0;
+}
+:is([data-material="metallic"].dark, .dark [data-material="metallic"]) { --band-mid: .40; --band-1: .50; --band-2: .40; --band-3: .32; --band-4: .36; --band-5: .47; }
+[data-material="metallic"][data-polish="satin"] { --band-1: .95; --band-2: .89; --band-3: .80; --band-4: .86; --band-5: .93; }
+[data-material="metallic"][data-polish="mirror"] { --band-1: .995; --band-2: .90; --band-3: .66; --band-4: .84; --band-5: .99; }
+:is([data-material="metallic"].dark, .dark [data-material="metallic"])[data-polish="satin"] { --band-1: .48; --band-2: .42; --band-3: .37; --band-4: .40; --band-5: .46; }
+:is([data-material="metallic"].dark, .dark [data-material="metallic"])[data-polish="mirror"] { --band-1: .50; --band-2: .38; --band-3: .26; --band-4: .34; --band-5: .49; }
+
+[data-material="metallic"][data-alloy="silver"] { --alloy-h: 90; --alloy-cc: 0.004; --alloy-flat: 1; --alloy-lift: 0.03; --alloy-k: 10%; }
+[data-material="metallic"][data-alloy="aluminium"] { --alloy-h: 230; --alloy-cc: 0.01; --alloy-flat: 0.55; --alloy-lift: 0; --alloy-k: 10%; }
+[data-material="metallic"][data-alloy="titanium"] { --alloy-h: 60; --alloy-cc: 0.018; --alloy-flat: 1; --alloy-lift: 0; --alloy-k: 10%; }
+[data-material="metallic"][data-alloy="gold"] { --alloy-h: 85; --alloy-cc: 0.1; --alloy-flat: 1; --alloy-lift: 0; --alloy-k: 9%; }
+[data-material="metallic"][data-alloy="brass"] { --alloy-h: 100; --alloy-cc: 0.075; --alloy-flat: 0.8; --alloy-lift: 0; --alloy-k: 9%; }
+[data-material="metallic"][data-alloy="bronze"] { --alloy-h: 55; --alloy-cc: 0.07; --alloy-flat: 0.85; --alloy-lift: -0.04; --alloy-k: 9%; }
+[data-material="metallic"][data-alloy="copper"] { --alloy-h: 35; --alloy-cc: 0.09; --alloy-flat: 1; --alloy-lift: 0; --alloy-k: 9%; }
+[data-material="metallic"][data-alloy="blue"] { --alloy-h: 255; --alloy-cc: 0.11; --alloy-flat: 1; --alloy-lift: 0; --alloy-k: 7%; }
+[data-material="metallic"][data-alloy="red"] { --alloy-h: 22; --alloy-cc: 0.13; --alloy-flat: 1; --alloy-lift: 0; --alloy-k: 7%; }
+[data-material="metallic"][data-alloy="orange"] { --alloy-h: 62; --alloy-cc: 0.15; --alloy-flat: 1; --alloy-lift: 0; --alloy-k: 7%; }
+[data-material="metallic"][data-alloy="purple"] { --alloy-h: 300; --alloy-cc: 0.12; --alloy-flat: 1; --alloy-lift: 0; --alloy-k: 7%; }
+/* Lift only brightens light-mode metal; dark plates stay deep enough for their light ink. */
+:is([data-material="metallic"].dark, .dark [data-material="metallic"])[data-alloy] { --alloy-lift: 0; }
+[data-material="metallic"][data-alloy]:not([data-alloy="steel"]) {
+  --metallic-steel-base: linear-gradient(180deg, oklch(calc(var(--band-mid) + (var(--band-1) - var(--band-mid)) * var(--alloy-flat) + var(--alloy-lift)) var(--alloy-cc) var(--alloy-h)) 0%, oklch(calc(var(--band-mid) + (var(--band-2) - var(--band-mid)) * var(--alloy-flat) + var(--alloy-lift)) var(--alloy-cc) var(--alloy-h)) 34%, oklch(calc(var(--band-mid) + (var(--band-3) - var(--band-mid)) * var(--alloy-flat) + var(--alloy-lift)) var(--alloy-cc) var(--alloy-h)) 52%, oklch(calc(var(--band-mid) + (var(--band-4) - var(--band-mid)) * var(--alloy-flat) + var(--alloy-lift)) var(--alloy-cc) var(--alloy-h)) 76%, oklch(calc(var(--band-mid) + (var(--band-5) - var(--band-mid)) * var(--alloy-flat) + var(--alloy-lift)) var(--alloy-cc) var(--alloy-h)) 100%);
+  --metallic-edge: oklch(.55 calc(var(--alloy-cc) * .7) var(--alloy-h));
+  --alloy-c: oklch(.8 var(--alloy-cc) var(--alloy-h));
+}
+:is([data-material="metallic"].dark, .dark [data-material="metallic"])[data-alloy]:not([data-alloy="steel"]) { --metallic-edge: oklch(.68 calc(var(--alloy-cc) * .7) var(--alloy-h)); --alloy-c: oklch(.45 var(--alloy-cc) var(--alloy-h)); }
+
+/* Depth: one multiplier on every bevel, well and shadow. */
+[data-material="metallic"][data-depth="flat"] { --depth: .4; }
+[data-material="metallic"][data-depth="deep"] { --depth: 1.6; }
+/* Grain (Textured finish only): fine, coarse, or spun (circular). */
+[data-material="metallic"][data-grain="coarse"] {
+  --metallic-grain-steel: repeating-linear-gradient(180deg, rgba(255,255,255,.13) 0 2px, rgba(0,0,0,.08) 2px 3px, transparent 3px 5px);
+  --metallic-grain-panel: repeating-linear-gradient(180deg, rgba(255,255,255,.55) 0 2px, transparent 2px 5px), repeating-linear-gradient(180deg, rgba(0,0,0,.045) 0 1px, transparent 1px 9px);
+  --metallic-grain-tray: repeating-linear-gradient(180deg, rgba(255,255,255,.45) 0 2px, transparent 2px 5px);
+  --metallic-grain-strip: repeating-linear-gradient(180deg, rgba(255,255,255,.13) 0 2px, rgba(0,0,0,.06) 2px 4px);
+  --metallic-grain-satin: repeating-linear-gradient(180deg, rgba(255,255,255,.6) 0 2px, transparent 2px 5px);
+}
+:is([data-material="metallic"].dark, .dark [data-material="metallic"])[data-grain="coarse"] {
+  --metallic-grain-steel: repeating-linear-gradient(180deg, rgba(255,255,255,.08) 0 2px, rgba(0,0,0,.14) 2px 3px, transparent 3px 5px);
+  --metallic-grain-panel: repeating-linear-gradient(180deg, rgba(255,255,255,.05) 0 2px, transparent 2px 5px), repeating-linear-gradient(180deg, rgba(0,0,0,.25) 0 1px, transparent 1px 9px);
+  --metallic-grain-tray: repeating-linear-gradient(180deg, rgba(255,255,255,.045) 0 2px, transparent 2px 5px);
+  --metallic-grain-strip: repeating-linear-gradient(180deg, rgba(255,255,255,.07) 0 2px, rgba(0,0,0,.18) 2px 4px);
+  --metallic-grain-satin: repeating-linear-gradient(180deg, rgba(255,255,255,.04) 0 2px, transparent 2px 5px);
+}
+[data-material="metallic"][data-grain="spun"] {
+  --metallic-grain-steel: repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,.1) 0 1px, rgba(0,0,0,.06) 1px 2px);
+  --metallic-grain-panel: repeating-radial-gradient(circle at 50% 0%, rgba(255,255,255,.45) 0 1px, transparent 1px 3px);
+  --metallic-grain-tray: repeating-radial-gradient(circle at 50% 0%, rgba(255,255,255,.35) 0 1px, transparent 1px 3px);
+  --metallic-grain-strip: repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,.09) 0 1px, rgba(0,0,0,.04) 1px 2px);
+  --metallic-grain-satin: repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,.5) 0 1px, transparent 1px 3px);
+}
+:is([data-material="metallic"].dark, .dark [data-material="metallic"])[data-grain="spun"] {
+  --metallic-grain-steel: repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,.06) 0 1px, rgba(0,0,0,.1) 1px 2px);
+  --metallic-grain-panel: repeating-radial-gradient(circle at 50% 0%, rgba(255,255,255,.035) 0 1px, transparent 1px 3px);
+  --metallic-grain-tray: repeating-radial-gradient(circle at 50% 0%, rgba(255,255,255,.03) 0 1px, transparent 1px 3px);
+  --metallic-grain-strip: repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,.05) 0 1px, rgba(0,0,0,.12) 1px 2px);
+  --metallic-grain-satin: repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,.03) 0 1px, transparent 1px 3px);
+}
+/* Smooth beats any grain choice (more specific than the grain dials, and last). */
+[data-material="metallic"][data-material="metallic"][data-finish="smooth"] {
+  --metallic-grain-steel: linear-gradient(transparent, transparent);
+  --metallic-grain-panel: linear-gradient(transparent, transparent);
+  --metallic-grain-tray: linear-gradient(transparent, transparent);
+  --metallic-grain-strip: linear-gradient(transparent, transparent);
+  --metallic-grain-satin: linear-gradient(transparent, transparent);
+}
+/* Density: Tailwind's live spacing unit, so every height, padding and gap scales together. */
+[data-material="metallic"][data-density="compact"] { --spacing: 0.22rem; }
+[data-material="metallic"][data-density="roomy"] { --spacing: 0.28rem; }
+/* Corners: whole-pixel radius steps (sm, md, lg = 3/4/5px machined; 9/12/15px soft). */
+[data-material="metallic"][data-corners="machined"] { --radius: 0.3125rem; }
+[data-material="metallic"][data-corners="soft"] { --radius: 0.9375rem; }
+/* Motion character: the easing family (the page sets the matching duration factor into --motion-scale). */
+/*
+ * Crisp: precise, nothing overshoots, menus only fade and nudge. Snappy: the reference, a small overshoot on parts
+ * that travel or pop. Soft: springs (sampled damped-spring curves): parts travel with a gentle bounce (≈7%), marks pop
+ * with a livelier one (≈13%), overlays settle with a faint one (≈3%), and travelling bars stretch like a drop of
+ * liquid. Heights never bounce in any mode.
+ */
+[data-material="metallic"][data-motion="crisp"] {
+  --motion-character: .8;
+  --ease-snap: cubic-bezier(.2,.8,.2,1); --ease-inout: cubic-bezier(.4,0,.2,1);
+  --ease-travel: cubic-bezier(.2,.8,.2,1); --ease-pop: cubic-bezier(.2,.8,.2,1);
+  --overlay-scale: 1; --motion-stretch: 1;
+}
+[data-material="metallic"][data-motion="soft"] {
+  --motion-character: 1.35;
+  --ease-snap: cubic-bezier(.34,1.12,.64,1); --ease-standard: cubic-bezier(.25,.8,.25,1); --ease-inout: cubic-bezier(.45,0,.2,1);
+  --ease-height: cubic-bezier(.45,0,.2,1);
+  --travel-k: 1.3;
+  --overlay-k: 1.6;
+  --ease-travel: linear(0, 0.028, 0.1, 0.199, 0.314, 0.433, 0.549, 0.657, 0.753, 0.836, 0.904, 0.959, 1, 1.03, 1.05, 1.062, 1.067, 1.068, 1.064, 1.058, 1.051, 1.043, 1.035, 1.027, 1.02, 1.014, 1.009, 1.005, 1.001, 0.999, 0.997, 0.996, 0.996, 0.995, 0.995, 0.996, 0.996, 0.997, 0.997, 0.998, 1);
+  --ease-pop: linear(0, 0.039, 0.138, 0.274, 0.425, 0.577, 0.719, 0.841, 0.942, 1.019, 1.073, 1.107, 1.123, 1.126, 1.119, 1.105, 1.087, 1.067, 1.048, 1.031, 1.016, 1.004, 0.996, 0.989, 0.986, 0.984, 0.984, 0.985, 0.987, 0.99, 0.992, 0.994, 0.997, 0.998, 1, 1.001, 1.001, 1.002, 1.002, 1.002, 1);
+  --ease-overlay: linear(0, 0.021, 0.075, 0.151, 0.24, 0.335, 0.43, 0.521, 0.606, 0.683, 0.752, 0.811, 0.862, 0.904, 0.938, 0.965, 0.986, 1.002, 1.013, 1.021, 1.025, 1.028, 1.028, 1.028, 1.026, 1.024, 1.021, 1.019, 1.016, 1.013, 1.011, 1.009, 1.007, 1.005, 1.004, 1.003, 1.002, 1.001, 1, 1, 1);
+  --overlay-scale: .95; --overlay-shift: 4px; --overlay-blur: 2px;
+  --motion-stretch: 1.5;
+}
+/* Sweep: off, on a click (default), or ambient (a rare, slow glint across steel plates while idle, staggered). */
+[data-material="metallic"][data-sweep="off"] [data-sheen]::after { display: none; }
+[data-material="metallic"][data-sweep="ambient"] :is(:is([data-slot="button"], [data-slot$="-close"], [data-slot$="-trigger"], [data-slot$="-action"], [data-slot$="-cancel"], [data-slot$="-next"], [data-slot$="-previous"], [data-slot$="-submit"], [data-slot$="-skip"])[data-variant="default"], :is([data-slot="toggle"], [data-slot="toggle-group-item"], [data-slot="chip-group-item"])[data-state="on"], [data-slot="tabs-list"][data-variant="default"] [data-slot="tabs-trigger"][data-state="active"]) { position: relative; }
+[data-material="metallic"][data-sweep="ambient"] :is(:is([data-slot="button"], [data-slot$="-close"], [data-slot$="-trigger"], [data-slot$="-action"], [data-slot$="-cancel"], [data-slot$="-next"], [data-slot$="-previous"], [data-slot$="-submit"], [data-slot$="-skip"])[data-variant="default"], :is([data-slot="toggle"], [data-slot="toggle-group-item"], [data-slot="chip-group-item"])[data-state="on"], [data-slot="tabs-list"][data-variant="default"] [data-slot="tabs-trigger"][data-state="active"])::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: var(--metallic-sheen) no-repeat;
+  background-size: 250% 100%;
+  background-position: 110% 0;
+  animation: metallic-glint calc(9s * var(--motion-scale)) var(--ease-sheen) infinite;
+}
+[data-material="metallic"][data-sweep="ambient"] :nth-child(3n+2)::before { animation-delay: calc(3s * var(--motion-scale)); }
+[data-material="metallic"][data-sweep="ambient"] :nth-child(3n)::before { animation-delay: calc(6s * var(--motion-scale)); }
+@keyframes metallic-glint {
+  0% { background-position: 110% 0; }
+  9%, 100% { background-position: -10% 0; }
+}
+@media (prefers-reduced-motion: reduce) { [data-material="metallic"] *::before { animation: none !important; } }
+[data-material="metallic"][data-rm] *::before { animation: none !important; }
+
+/* ══ Round 8: every component follows the Motion dial ══ */
+
+/*
+ * Stock Tailwind transitions (hover and colour fades on fields, outline and ghost buttons, links, OTP slots, table
+ * rows…) read these two theme variables, so pointing them at the motion tokens brings every one of them along.
+ */
+[data-material="metallic"] {
+  --default-transition-duration: calc(150ms * var(--motion-scale));
+  --default-transition-timing-function: var(--ease-standard);
+}
+/* Menu, select and command highlights: up quickly, drain away slowly, like table rows. */
+[data-material="metallic"] :where([data-slot="select-item"], [data-slot$="menu-item"], [data-slot$="-checkbox-item"], [data-slot$="-radio-item"], [data-slot="command-item"]) {
+  transition: background-color calc(240ms * var(--motion-scale)) var(--ease-standard), color calc(240ms * var(--motion-scale)) var(--ease-standard), box-shadow calc(240ms * var(--motion-scale)) var(--ease-standard);
+}
+[data-material="metallic"] :where([data-slot="select-item"], [data-slot$="menu-item"], [data-slot$="-checkbox-item"], [data-slot$="-radio-item"], [data-slot="command-item"]):is([data-highlighted], [data-selected="true"]) { transition-duration: var(--motion-fast); }
+
+/*
+ * Plates turning on (pop family): toggles, toggle-group items, chips, the current page, calendar days. spike-chrome
+ * sets data-pop only on a real change (never on page load); the plate presses in and comes back lit on the pop curve.
+ */
+[data-material="metallic"] [data-pop] { animation: metallic-plate-in var(--motion-pop) var(--ease-pop) both; }
+@keyframes metallic-plate-in { from { scale: .94; filter: brightness(1.12); } }
+
+/*
+ * Pill tabs (travel family): the steel plate slides along the tray to the new tab, like the line tab's bar. While it
+ * travels, a copy of the plate (data-plate-ghost) moves under the labels and the new tab's own plate is hidden.
+ */
+[data-material="metallic"] [data-slot="tabs-list"]:not([data-variant="line"]) { position: relative; }
+[data-material="metallic"] [data-slot="tabs-list"]:not([data-variant="line"]) > [data-slot="tabs-trigger"] { z-index: 1; }
+[data-material="metallic"] [data-plate-ghost] { position: absolute; z-index: 0; pointer-events: none; }
+[data-material="metallic"] [data-gliding] { background: transparent !important; box-shadow: none !important; border-color: transparent !important; }
+[data-material="metallic"] [data-gliding]::before, [data-material="metallic"] [data-gliding]::after { display: none; }
+
+/*
+ * Checkbox (pop family), the same build as the radio: the checked plate lives on its own layer so it can swell in and
+ * fade out, and the tick keeps the checked colour while it leaves. It used to inherit the unchecked text colour the
+ * moment the box was unticked, so a black tick flashed on the glass for 100ms.
+ */
+[data-material="metallic"] [data-slot="checkbox"] { --cb-on: var(--metallic-steel); --cb-on-depth: var(--metallic-depth-raised-flush); --cb-tick: var(--metallic-check); }
+[data-material="metallic"] :is([role="menu"], table, [cmdk-root]) [data-slot="checkbox"] { --cb-on: var(--primary); --cb-on-depth: none; --cb-tick: var(--primary-foreground); }
+[data-material="metallic"] [data-slot="checkbox"]:is([data-state="checked"], [data-state="indeterminate"], [data-checked]):not([aria-invalid="true"]) { background: var(--metallic-glass); box-shadow: var(--metallic-depth-groove); }
+[data-material="metallic"] [data-slot="checkbox"]:not([aria-invalid="true"])::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--cb-on);
+  box-shadow: var(--cb-on-depth);
+  opacity: 0;
+  scale: .5;
+  transition: opacity var(--motion-fast) var(--ease-exit), scale var(--motion-fast) var(--ease-exit);
+}
+[data-material="metallic"] [data-slot="checkbox"]:is([data-state="checked"], [data-state="indeterminate"], [data-checked]):not([aria-invalid="true"])::before {
+  opacity: 1;
+  scale: 1;
+  transition: opacity var(--motion-fast) var(--ease-standard), scale var(--motion-pop) var(--ease-pop);
+}
+[data-material="metallic"] [data-slot="checkbox-indicator"] { position: relative; color: var(--cb-tick); }
+
+/* Sheets are large surfaces: they slide in from their edge on the height curve and never bounce. */
+[data-material="metallic"] [data-slot="sheet-content"][data-state="open"] { animation-duration: calc(var(--motion-height) * 1.15); animation-timing-function: var(--ease-height); }
+[data-material="metallic"] [data-slot="sheet-content"][data-state="closed"] { animation-duration: calc(var(--motion-fast) * 2); animation-timing-function: var(--ease-exit); }
+/* Backdrops fade with their overlay. */
+[data-material="metallic"] [data-slot$="-overlay"]:is([data-state="open"], [data-open]) { animation-duration: var(--motion-overlay); }
+[data-material="metallic"] [data-slot$="-overlay"]:is([data-state="closed"], [data-closed]) { animation-duration: var(--motion-fast); }
+/* Collapsible: same machined panel language as accordion (body never steel). */
+[data-material="metallic"] [data-slot="collapsible"] {
+  border-color: var(--metallic-edge-quiet);
+  background: var(--metallic-panel);
+  box-shadow: inset 0 1px 0 var(--metallic-chamfer);
+  --muted-foreground: var(--metallic-panel-muted);
+  overflow: hidden;
+}
+[data-material="metallic"] [data-slot="collapsible-content"] {
+  background: color-mix(in oklch, var(--background) 70%, transparent);
+  box-shadow: inset 0 2px 3px -2px rgba(0,0,0,.22);
+}
+[data-material="metallic"] [data-slot="collapsible-content"]:is([data-state="open"], [data-state="closed"]) { animation-duration: var(--motion-height); animation-timing-function: var(--ease-height); }
+/* Chips join and part on the travel curve. */
+[data-material="metallic"] [data-slot="chip-group"] { --chip-dur: var(--motion-travel); --chip-ease: var(--ease-travel); }
+/* Toasts arrive and stack on the overlay curve (decision 17 revised: Sonner's own 400ms ease is replaced). */
+[data-material="metallic"] [data-sonner-toast] { transition-duration: calc(400ms * var(--motion-scale) * var(--overlay-k)); transition-timing-function: var(--ease-overlay); }
+/* Loops keep their character but follow the speed: quicker in Crisp, calmer in Soft. */
+[data-material="metallic"] [data-slot="spinner"] { animation-duration: calc(1s * var(--motion-scale)); }
+[data-material="metallic"] [data-slot="skeleton"] { animation-duration: calc(2s * var(--motion-scale)); }
+[data-material="metallic"] [data-slot="input-otp-caret"], [data-material="metallic"] [data-slot="input-otp-slot"] .animate-caret-blink { animation-duration: calc(1.25s * var(--motion-scale)); }
+
+/* ══ Round 9: the remaining components, built from the same parts ══ */
+
+
+/* Menu rows that the round-8 list didn't reach: the same tint trail. */
+[data-material="metallic"] :where([data-slot="menubar-item"], [data-slot="menubar-sub-trigger"], [data-slot="context-menu-sub-trigger"], [data-slot="dropdown-menu-sub-trigger"], [data-slot="combobox-item"], [data-slot="navigation-menu-link"]) {
+  transition: background-color calc(240ms * var(--motion-scale)) var(--ease-standard), color calc(240ms * var(--motion-scale)) var(--ease-standard), box-shadow calc(240ms * var(--motion-scale)) var(--ease-standard);
+}
+[data-material="metallic"] :where([data-slot="menubar-item"], [data-slot="menubar-sub-trigger"], [data-slot="context-menu-sub-trigger"], [data-slot="dropdown-menu-sub-trigger"], [data-slot="combobox-item"], [data-slot="navigation-menu-link"]):is([data-highlighted], [data-open], [data-state="open"]) { transition-duration: var(--motion-fast); }
+/* An open submenu's trigger stays lit while its menu is out. */
+[data-material="metallic"] :is([data-slot="menubar-sub-trigger"], [data-slot="context-menu-sub-trigger"], [data-slot="dropdown-menu-sub-trigger"]):is([data-state="open"], [data-open]) {
+  background: color-mix(in oklch, var(--metallic-edge) 16%, transparent);
+  box-shadow: inset 0 1px 1px rgba(0,0,0,.08);
+}
+
+/* ── Menubar: a brushed tray; the open menu's trigger is a steel plate ── */
+[data-material="metallic"] [data-slot="menubar"] {
+  background: var(--metallic-tray);
+  border: 1px solid var(--metallic-edge-quiet);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.2), inset 0 -1px 0 rgba(255,255,255,.35), 0 1px 0 var(--metallic-seam-light);
+  color: var(--metallic-tray-ink);
+}
+:is([data-material="metallic"].dark, .dark [data-material="metallic"]) [data-slot="menubar"] { box-shadow: inset 0 1px 3px rgba(0,0,0,.5), 0 1px 0 var(--metallic-seam-light); }
+[data-material="metallic"] [data-slot="menubar-trigger"] {
+  border: 1px solid transparent;
+  transition: background-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard), box-shadow var(--motion-travel) var(--ease-travel);
+}
+@media (hover: hover) {
+  [data-material="metallic"] [data-slot="menubar-trigger"]:hover:not([data-state="open"]) { background: color-mix(in oklch, var(--metallic-tray-ink) 7%, transparent); }
+}
+[data-material="metallic"] [data-slot="menubar-trigger"]:is([data-state="open"], [data-open]) {
+  background: var(--metallic-steel);
+  border-color: var(--metallic-edge);
+  color: var(--metallic-ink);
+  box-shadow: var(--metallic-depth-pressed);
+  text-shadow: var(--metallic-engrave);
+}
+
+/* ── Navigation menu: quiet triggers, an open trigger is pressed into the tray; the viewport is a panel ── */
+[data-material="metallic"] [data-slot="navigation-menu-trigger"], [data-material="metallic"] [data-slot="navigation-menu-link"]:where(:not([data-slot="navigation-menu-content"] *)) {
+  border: 1px solid transparent;
+}
+[data-material="metallic"] [data-slot="navigation-menu-trigger"]:is([data-state="open"], [data-open]) {
+  background: var(--metallic-tray);
+  border-color: var(--metallic-edge-quiet);
+  color: var(--metallic-tray-ink);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.2), inset 0 -1px 0 rgba(255,255,255,.35);
+}
+:is([data-material="metallic"].dark, .dark [data-material="metallic"]) [data-slot="navigation-menu-trigger"]:is([data-state="open"], [data-open]) { box-shadow: inset 0 1px 3px rgba(0,0,0,.5); }
+[data-material="metallic"] [data-slot="navigation-menu-trigger"] > svg { transition: rotate var(--motion-travel) var(--ease-travel); }
+/* Panels arrive on the overlay family; sliding between two menus keeps the viewport's own size animation. */
+[data-material="metallic"] [data-slot="navigation-menu-viewport"]:is([data-state="open"], [data-open]) { animation-duration: var(--motion-overlay); animation-timing-function: var(--ease-overlay); --tw-enter-scale: var(--overlay-scale); }
+[data-material="metallic"] [data-slot="navigation-menu-viewport"]:is([data-state="closed"], [data-closed]) { animation-duration: var(--motion-fast); animation-timing-function: var(--ease-exit); }
+[data-material="metallic"] [data-slot="navigation-menu-content"] { animation-duration: var(--motion-overlay); animation-timing-function: var(--ease-overlay); }
+
+/* ── Sidebar: a machined panel with a seam; the active item is a steel plate that slides between items ── */
+[data-material="metallic"] [data-slot="sidebar-inner"] {
+  background: var(--metallic-panel);
+  color: var(--foreground);
+  --muted-foreground: var(--metallic-panel-muted);
+  overflow: hidden;
+}
+[data-material="metallic"] [data-slot="sidebar-container"] { box-shadow: inset -1px 0 0 var(--metallic-seam-light), 1px 0 0 var(--metallic-edge-quiet); border: 0; }
+[data-material="metallic"] :is([data-slot="sidebar-header"], [data-slot="sidebar-footer"]) { background: var(--metallic-tray); box-shadow: inset 0 1px 0 var(--metallic-seam-light); }
+[data-material="metallic"] [data-slot="sidebar-header"] { border-bottom: 1px solid color-mix(in oklch, var(--metallic-edge) 45%, transparent); }
+[data-material="metallic"] [data-slot="sidebar-footer"] { border-top: 1px solid color-mix(in oklch, var(--metallic-edge) 45%, transparent); }
+[data-material="metallic"] [data-slot="sidebar-separator"] { background: var(--metallic-edge-quiet); box-shadow: 0 1px 0 var(--metallic-seam-light); }
+[data-material="metallic"] [data-slot="sidebar-content"] { position: relative; }
+/* Button is a plate (z-index 1). Badge/action are siblings of that plate — they must sit above it or the active fill covers the count. */
+[data-material="metallic"] :is([data-slot="sidebar-menu-button"], [data-slot="sidebar-menu-sub-button"]) { position: relative; z-index: 1; border: 1px solid transparent; transition: background-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard), width var(--motion-height) var(--ease-height), height var(--motion-height) var(--ease-height), padding var(--motion-height) var(--ease-height); }
+@media (hover: hover) {
+  [data-material="metallic"] :is([data-slot="sidebar-menu-button"], [data-slot="sidebar-menu-sub-button"]):hover:not([data-active="true"]) { background: color-mix(in oklch, var(--metallic-edge) 12%, transparent); }
+}
+[data-material="metallic"] :is([data-slot="sidebar-menu-button"], [data-slot="sidebar-menu-sub-button"]):is([data-active="true"]) {
+  background: var(--metallic-steel);
+  border-color: var(--metallic-edge);
+  color: var(--metallic-ink);
+  box-shadow: var(--metallic-depth-raised-flush);
+  text-shadow: var(--metallic-engrave);
+  font-weight: 500;
+}
+[data-material="metallic"] :is([data-slot="sidebar-menu-badge"], [data-slot="sidebar-menu-action"]) { z-index: 2; }
+[data-material="metallic"] [data-slot="sidebar-menu-badge"] {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  color: var(--muted-foreground);
+}
+/* Match the engraved label when the steel plate is active under the count. */
+[data-material="metallic"] [data-slot="sidebar-menu-item"]:has([data-slot="sidebar-menu-button"][data-active="true"]) [data-slot="sidebar-menu-badge"] {
+  color: var(--metallic-ink);
+  text-shadow: var(--metallic-engrave);
+}
+/* One height for the sidebar header and the header beside it, so their lines meet. */
+[data-material="metallic"] { --shell-header-h: 3.0625rem; }
+[data-material="metallic"] [data-slot="sidebar-header"] { box-sizing: border-box; height: var(--shell-header-h); justify-content: center; }
+/* Collapsed rail: every icon button is 32px with a 1px border, so 7px of padding puts the icon dead centre (the stock p-0 left the brand icon at the edge). */
+[data-material="metallic"] [data-slot="sidebar"][data-collapsible="icon"] :is([data-slot="sidebar-menu-button"], [data-slot="sidebar-menu-sub-button"]) { padding: 7px !important; justify-content: center; gap: 0; }
+/* In the collapsed rail only icons remain: labels fade out with the width instead of being cut off mid-letter. */
+[data-material="metallic"] :is([data-slot="sidebar-menu-button"], [data-slot="sidebar-menu-sub-button"]) > span:not([data-slot]) { transition: opacity var(--motion-fast) var(--ease-standard); }
+[data-material="metallic"] [data-slot="sidebar"][data-collapsible="icon"] :is([data-slot="sidebar-menu-button"], [data-slot="sidebar-menu-sub-button"]) > span:not([data-slot]) { opacity: 0;  width: 0; flex: none; overflow: hidden; }
+/* Collapsing is a panel opening: the height family, never a bounce. */
+[data-material="metallic"] :is([data-slot="sidebar-gap"], [data-slot="sidebar-container"]) { transition-duration: var(--motion-height); transition-timing-function: var(--ease-height); }
+[data-material="metallic"] [data-slot="sidebar-rail"]::after { transition: background-color var(--motion-fast) var(--ease-standard); }
+[data-material="metallic"] [data-slot="sidebar-inset"] { background: var(--background); }
+
+/* ── Drawer: brushed panel body, steel grip, tray footer; height family, no bounce ── */
+[data-material="metallic"] [data-vaul-drawer] { transition-duration: calc(var(--motion-height) * 1.15); transition-timing-function: var(--ease-height); }
+[data-material="metallic"] [data-slot="drawer-overlay"] { transition-duration: calc(var(--motion-height) * 1.15); transition-timing-function: var(--ease-height); }
+[data-material="metallic"] [data-slot="drawer-content"] > div:first-child:not([data-slot]) {
+  background: var(--metallic-steel);
+  box-shadow: var(--metallic-depth-raised-flush), 0 0 0 1px var(--metallic-edge);
+}
+/* Footer stays tray — deliberately different from the panel body. */
+[data-material="metallic"] [data-slot="drawer-footer"] { background: var(--metallic-tray); border-top: 1px solid color-mix(in oklch, var(--metallic-edge) 45%, transparent); box-shadow: inset 0 1px 0 var(--metallic-seam-light); }
+[data-material="metallic"] :is([data-slot="drawer-title"]) { text-shadow: var(--metallic-surface-engrave); }
+
+/* ── Scroll area: a satin steel thumb in a faint groove ── */
+[data-material="metallic"] [data-slot="scroll-area-scrollbar"] { box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--metallic-edge-quiet) 50%, transparent); background: color-mix(in oklch, var(--metallic-edge) 6%, transparent); }
+[data-material="metallic"] [data-slot="scroll-area-thumb"] {
+  background: var(--metallic-satin);
+  box-shadow: inset 0 0 0 1px var(--metallic-edge), var(--metallic-depth-satin);
+  transition: filter var(--motion-fast) var(--ease-standard);
+}
+@media (hover: hover) { [data-material="metallic"] [data-slot="scroll-area-thumb"]:hover { filter: brightness(.96); } }
+
+/* ── Resizable: a machined seam with a steel grip that presses in while it is held ── */
+[data-material="metallic"] [data-slot="resizable-handle"] { background: var(--metallic-edge-quiet); box-shadow: 1px 0 0 var(--metallic-seam-light); }
+[data-material="metallic"] [data-slot="resizable-handle"][aria-orientation="horizontal"] { box-shadow: 0 1px 0 var(--metallic-seam-light); }
+[data-material="metallic"] [data-slot="resizable-handle"] > div {
+  background: var(--metallic-steel);
+  box-shadow: var(--metallic-depth-raised-flush), inset 0 0 0 1px var(--metallic-edge);
+  transition: scale var(--motion-pop) var(--ease-pop), filter var(--motion-fast) var(--ease-standard);
+}
+[data-material="metallic"] [data-slot="resizable-handle"]:is(:hover, [data-separator="active"], :focus-visible) > div { filter: brightness(1.04); }
+[data-material="metallic"] [data-slot="resizable-handle"][data-separator="active"] > div { scale: .88; box-shadow: var(--metallic-depth-pressed), inset 0 0 0 1px var(--metallic-edge); }
+
+/* ── Native select: a field groove; Combobox rides on Input Group and the Command list already ── */
+/* The field rules reset the padding, so the room for the chevron is set again here (it sits 10px from the right edge). */
+[data-material="metallic"] [data-slot="native-select"] { padding-inline: 12px 2.25rem; text-overflow: ellipsis; }
+[data-material="metallic"] [data-slot="native-select-icon"] { color: var(--muted-foreground); right: 12px; }
+
+/* ── Item, Empty: the panel's own rim; media become steel beads and engraved wells ── */
+/* Item is a row that normally sits inside a card or panel, so its default is transparent. The two surfaced variants get metal. */
+[data-material="metallic"] [data-slot="item"][data-variant="outline"] {
+  border-color: var(--metallic-edge-quiet);
+  background: var(--metallic-panel);
+  box-shadow: var(--metallic-depth-satin);
+  --muted-foreground: var(--metallic-panel-muted);
+}
+[data-material="metallic"] [data-slot="item"][data-variant="muted"] {
+  background: var(--metallic-tray);
+  border-color: var(--metallic-edge-quiet);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.14), 0 1px 0 var(--metallic-seam-light);
+  --muted-foreground: var(--metallic-panel-muted);
+}
+[data-material="metallic"] [data-slot="item-title"] { text-shadow: var(--metallic-surface-engrave); }
+[data-material="metallic"] [data-slot="item"] { transition: background-color calc(240ms * var(--motion-scale)) var(--ease-standard); }
+[data-material="metallic"] [data-slot="item-separator"] { background: var(--metallic-edge-quiet); box-shadow: 0 1px 0 var(--metallic-seam-light); }
+[data-material="metallic"] [data-slot="item-media"][data-variant="icon"] {
+  /* This version of Item gives the icon no box of its own, so the bead is made here: a 32px steel disc. */
+  box-sizing: border-box;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-md);
+  background: var(--metallic-steel);
+  color: var(--metallic-ink);
+  border: 1px solid var(--metallic-edge);
+  box-shadow: var(--metallic-depth-raised-flush);
+}
+/* Empty is a placeholder well: a brushed panel with a soft inset edge, so an empty list still reads as a surface. */
+[data-material="metallic"] [data-slot="empty"] {
+  background: var(--metallic-panel);
+  border-color: var(--metallic-edge-quiet);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.1), 0 1px 0 var(--metallic-seam-light);
+  --muted-foreground: var(--metallic-panel-muted);
+}
+[data-material="metallic"] [data-slot="empty-title"] { text-shadow: var(--metallic-surface-engrave); }
+[data-material="metallic"] [data-slot="empty-icon"] {
+  background: var(--metallic-glass);
+  border: 1px solid var(--metallic-edge);
+  box-shadow: var(--metallic-depth-groove);
+  color: var(--muted-foreground);
+}
+
+/* ── Avatar: a steel ring, engraved initials; groups overlap less so the initials are never clipped ── */
+[data-material="metallic"] [data-slot="avatar"] { box-shadow: 0 0 0 1px var(--metallic-edge); }
+[data-material="metallic"] [data-slot="avatar-fallback"] {
+  background: var(--metallic-steel);
+  color: var(--metallic-ink);
+  box-shadow: var(--metallic-depth-raised-flush);
+  font-size: 12px;
+  font-weight: 500;
+  text-shadow: var(--metallic-engrave);
+}
+[data-material="metallic"] [data-slot="avatar-group"] > * { margin-inline-end: 0; }
+[data-material="metallic"] [data-slot="avatar-group"] > * + * { margin-inline-start: -.375rem; }
+
+/* ── Alert: a callout sits straight on the page, so it is a brushed tray with an engraved title (status stays icon plus words) ── */
+[data-material="metallic"] [data-slot="alert"] {
+  background: var(--metallic-tray);
+  border-color: var(--metallic-edge-quiet);
+  color: var(--metallic-tray-ink);
+  box-shadow: var(--metallic-depth-satin);
+  --muted-foreground: var(--metallic-panel-muted);
+}
+[data-material="metallic"] [data-slot="alert-title"] { text-shadow: var(--metallic-surface-engrave); }
+/* shadcn's Alert does not put its variant on the element, but its destructive variant does carry the text-destructive class,
+   so the rules below read either signal: data-variant="destructive" (custom alerts) or that class (stock alert, no edits).
+   The description's colour is set explicitly (the stock red at 90% opacity fails contrast on the tray). */
+[data-material="metallic"] [data-slot="alert-description"] { color: var(--metallic-panel-muted); }
+[data-material="metallic"] [data-slot="alert"]:is([data-variant="destructive"], .text-destructive) { color: var(--metallic-danger-ink); border-color: var(--metallic-danger-ink); }
+[data-material="metallic"] [data-slot="alert"]:is([data-variant="destructive"], .text-destructive) [data-slot="alert-description"] { color: var(--metallic-danger-ink); }
+
+/* ── Tooltip: a small dark steel tag (bright steel in dark mode), so it reads as a label pinned to the part ── */
+[data-material="metallic"] [data-slot="tooltip-content"] {
+  --metallic-tag: linear-gradient(180deg, #4a505b 0%, #2c3038 100%);
+  --metallic-tag-ink: #f2f4f7;
+  --metallic-tag-edge: #1c2028;
+  --metallic-tag-end: #2c3038;
+  --metallic-tag-lip: rgba(255,255,255,.18);
+  background: var(--metallic-tag);
+  color: var(--metallic-tag-ink);
+  border: 1px solid var(--metallic-tag-edge);
+  box-shadow: inset 0 1px 0 var(--metallic-tag-lip), 0 2px 6px rgba(0,0,0,.28);
+  text-shadow: 0 -1px 0 rgba(0,0,0,.45);
+}
+:is([data-material="metallic"].dark, .dark [data-material="metallic"]) [data-slot="tooltip-content"] {
+  --metallic-tag: linear-gradient(180deg, #f5f7fb 0%, #c4c9d3 100%);
+  --metallic-tag-ink: #1c2028;
+  --metallic-tag-edge: #6b717d;
+  --metallic-tag-end: #c4c9d3;
+  --metallic-tag-lip: rgba(255,255,255,.9);
+  text-shadow: 0 1px 0 rgba(255,255,255,.6);
+}
+/* The little arrow takes the tag's bottom colour so the join disappears. */
+[data-material="metallic"] [data-slot="tooltip-content"] svg:not([data-slot="kbd"] svg) { background: var(--metallic-tag-end); fill: var(--metallic-tag-end); }
+/* The doubled attribute outranks the shared satin rule that every kbd gets. */
+[data-material="metallic"] [data-slot="tooltip-content"][data-slot] [data-slot="kbd"] { background: color-mix(in oklch, var(--metallic-tag-ink) 14%, transparent); border-color: transparent; box-shadow: none; color: var(--metallic-tag-ink); }
+
+/* ── Breadcrumb: links are quiet engraved text, the current page is cut deeper, separators are grooves ── */
+[data-material="metallic"] [data-slot="breadcrumb-link"] { color: var(--muted-foreground); text-shadow: var(--metallic-engrave); }
+@media (hover: hover) {
+  [data-material="metallic"] [data-slot="breadcrumb-link"]:hover { color: var(--foreground); }
+}
+[data-material="metallic"] [data-slot="breadcrumb-page"] { color: var(--foreground); font-weight: 500; text-shadow: var(--metallic-engrave); }
+[data-material="metallic"] [data-slot="breadcrumb-separator"] { color: var(--metallic-edge-quiet); }
+[data-material="metallic"] [data-slot="breadcrumb-separator"] svg { filter: drop-shadow(0 1px 0 var(--metallic-seam-light)); }
+[data-material="metallic"] [data-slot="breadcrumb-ellipsis"] {
+  background: var(--metallic-satin);
+  border: 1px solid var(--metallic-edge-quiet);
+  border-radius: calc(var(--radius, .625rem) - 2px);
+  box-shadow: var(--metallic-depth-satin);
+  color: var(--muted-foreground);
+}
+
+/* ── Label: engraved like the other titles; the wording stays sentence case so forms read normally ── */
+[data-material="metallic"] :is([data-slot="label"], [data-slot="field-label"]) { text-shadow: var(--metallic-engrave); }
+
+/* ── Chart: the series are steel and the current alloy, labels are engraved small caps ── */
+[data-material="metallic"] {
+  --chart-1: color-mix(in oklch, var(--metallic-edge), black 28%);
+  --chart-2: var(--metallic-edge);
+  --chart-3: color-mix(in oklch, var(--metallic-edge), white 28%);
+  --chart-4: color-mix(in oklch, var(--metallic-edge), black 48%);
+  --chart-5: color-mix(in oklch, var(--metallic-edge), white 50%);
+}
+:is([data-material="metallic"].dark, .dark [data-material="metallic"]) {
+  --chart-1: color-mix(in oklch, var(--metallic-edge), white 32%);
+  --chart-2: var(--metallic-edge);
+  --chart-3: color-mix(in oklch, var(--metallic-edge), black 25%);
+  --chart-4: color-mix(in oklch, var(--metallic-edge), white 55%);
+  --chart-5: color-mix(in oklch, var(--metallic-edge), black 45%);
+}
+[data-material="metallic"] [data-slot="chart"] .recharts-cartesian-axis-tick text { font: 500 11px/16px var(--font-mono, ui-monospace, monospace); letter-spacing: .04em; text-transform: uppercase; fill: var(--muted-foreground); }
+[data-material="metallic"] [data-slot="chart"] .recharts-cartesian-grid line { stroke: var(--metallic-edge-quiet); stroke-opacity: .45; }
+[data-material="metallic"] [data-slot="chart"] .recharts-tooltip-wrapper > div {
+  border: 2px solid transparent;
+  background: var(--metallic-panel) padding-box, var(--metallic-steel) border-box;
+  box-shadow: var(--metallic-panel-depth);
+  color: var(--popover-foreground);
+  --muted-foreground: var(--metallic-panel-muted);
+}
+
+/* ══ AI chat items ══ */
+/* Your message is a light steel plate (the approved chat rule); other bubbles are quiet surfaces. */
+[data-material="metallic"] [data-slot="bubble"][data-variant="default"] > [data-slot="bubble-content"] {
+  background: var(--metallic-strip);
+  color: var(--metallic-strip-ink);
+  box-shadow: var(--metallic-depth-raised-flush), inset 0 0 0 1px var(--metallic-edge), 0 1px 2px rgba(0,0,0,.18);
+}
+[data-material="metallic"] [data-slot="bubble"][data-variant="secondary"] > [data-slot="bubble-content"] { background: var(--metallic-satin); color: var(--foreground); box-shadow: var(--metallic-depth-satin), inset 0 0 0 1px var(--metallic-edge-quiet); }
+[data-material="metallic"] [data-slot="bubble"]:is([data-variant="muted"], [data-variant="tinted"]) > [data-slot="bubble-content"] { background: var(--metallic-tray); color: var(--metallic-tray-ink); box-shadow: inset 0 0 0 1px var(--metallic-edge-quiet); }
+[data-material="metallic"] [data-slot="bubble"][data-variant="outline"] > [data-slot="bubble-content"] { border-color: var(--metallic-edge-quiet); background: var(--background); }
+[data-material="metallic"] [data-slot="bubble-reactions"] { background: var(--metallic-satin); box-shadow: inset 0 0 0 1px var(--metallic-edge-quiet); }
+/* Attachments are machined chips. */
+[data-material="metallic"] [data-slot="attachment"] {
+  background: var(--metallic-tray);
+  border-color: var(--metallic-edge-quiet);
+  color: var(--metallic-tray-ink);
+  box-shadow: var(--metallic-depth-satin);
+  --muted-foreground: var(--metallic-panel-muted);
+}
+[data-material="metallic"] [data-slot="attachment-media"] { background: var(--metallic-glass); box-shadow: var(--metallic-depth-groove); border: 1px solid var(--metallic-edge-quiet); }
+/* While a file is still being sent the name keeps its colour; stock draws a text shimmer, which would read as the steel sheen. */
+[data-material="metallic"] [data-slot="attachment-title"] { color: inherit; opacity: 1; animation: none; background: none; -webkit-text-fill-color: currentColor; }
+/* Markers are engraved labels on a machined seam. */
+[data-material="metallic"] [data-slot="marker"] { color: var(--muted-foreground); }
+[data-material="metallic"] [data-slot="marker"][data-variant="separator"] [data-slot="marker-content"] { font: 500 12px/16px var(--font-mono, ui-monospace, monospace); letter-spacing: .06em; text-transform: uppercase; }
+[data-material="metallic"] [data-slot="marker"][data-variant="separator"]::before, [data-material="metallic"] [data-slot="marker"][data-variant="separator"]::after { background: var(--metallic-edge-quiet); box-shadow: 0 1px 0 var(--metallic-seam-light); }
+[data-material="metallic"] [data-slot="marker"][data-variant="border"] { border-bottom-color: var(--metallic-edge-quiet); box-shadow: 0 1px 0 var(--metallic-seam-light); }
+/* Trace: status lamps. Running is the busy lamp, an error keeps the danger ink, and the words stay beside both. */
+[data-material="metallic"] :is([data-slot="trace-line"], [data-slot="trace-collapsible-trigger"]) { color: var(--metallic-panel-muted); }
+@media (hover: hover) { [data-material="metallic"] :is(a, button):is([data-slot="trace-line"], [data-slot="trace-collapsible-trigger"]):hover, [data-material="metallic"] :is(a, button):hover > [data-slot="trace-line"] { color: var(--foreground); } }
+[data-material="metallic"] [data-slot="trace-line"][data-status="error"] { color: var(--metallic-danger-ink); }
+[data-material="metallic"] [data-slot="trace-title"] { color: inherit; opacity: 1; animation: none; background: none; -webkit-text-fill-color: currentColor; }
+[data-material="metallic"] [data-slot="trace"] { --muted-foreground: var(--metallic-panel-muted); }
+[data-material="metallic"] [data-slot="trace-description"] { color: var(--metallic-panel-muted); }
+[data-material="metallic"] [data-slot="trace-line"]:is([data-status="running"], [data-status="pending"]) [data-slot="trace-icon"] { position: relative; }
+[data-material="metallic"] [data-slot="trace-line"][data-status="running"] [data-slot="trace-icon"]::after {
+  content: "";
+  position: absolute;
+  inset: -3px -3px auto auto;
+  width: 7px; height: 7px;
+  border-radius: 999px;
+  background: #d99a1e;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.5), 0 0 6px rgba(217,154,30,.65);
+  animation: metallic-led calc(1200ms * var(--motion-scale, 1)) ease-in-out infinite;
+}
+[data-material="metallic"] [data-slot="trace-collapsible-content-inner"] { border-left-color: var(--metallic-edge-quiet); box-shadow: -1px 0 0 var(--metallic-seam-light); }
+[data-material="metallic"] [data-slot="trace-collapsible-content"] { animation-duration: var(--motion-height); animation-timing-function: var(--ease-height); }
+[data-material="metallic"] [data-slot="trace-collapsible-trigger"] > [data-slot="trace-icon"] { transition: rotate var(--motion-travel) var(--ease-travel); }
+/* Code block: an engraved header over a recessed glass window; syntax colours were chosen for a light window. */
+[data-material="metallic"] [data-slot="code-block"] {
+  border: 1px solid var(--metallic-edge-quiet);
+  background: var(--metallic-tray);
+  color: var(--foreground);
+  box-shadow: var(--metallic-depth-satin);
+  --muted-foreground: var(--metallic-panel-muted);
+}
+/* The header is a real bar: centred content, room below it before the window starts, and the copy icon is a button. */
+[data-material="metallic"] [data-slot="code-block-header"] { text-shadow: var(--metallic-surface-engrave); align-items: center; min-height: 2.75rem; padding: .5rem .5rem .5rem .75rem; }
+/* The stock actions group is pulled 6px toward the edge (-mr-1.5); the button sits an even 8px from the top, right and bottom instead. */
+[data-material="metallic"] [data-slot="code-block-actions"] { margin-block: 0; margin-inline-end: 0; }
+[data-material="metallic"] [data-slot="code-block-content"] { margin-inline: .375rem; margin-bottom: .375rem; }
+[data-material="metallic"] [data-slot="code-block-copy-button"] {
+  width: 1.75rem;
+  height: 1.75rem;
+  background: var(--metallic-satin);
+  border: 1px solid var(--metallic-edge-quiet);
+  box-shadow: var(--metallic-depth-satin);
+  color: var(--foreground);
+  text-shadow: none;
+}
+[data-material="metallic"] [data-slot="code-block-title"] { font: 500 12px/16px var(--font-mono, ui-monospace, monospace); letter-spacing: .06em; text-transform: uppercase; }
+[data-material="metallic"] [data-slot="code-block-content"] { background: var(--metallic-glass); box-shadow: var(--metallic-depth-groove); border-radius: var(--radius-md); }
+/* Questionnaire: unticked choices are recessed glass, the chosen one turns to steel (steel means on). */
+[data-material="metallic"] [data-slot="questionnaire-choice"] {
+  background: var(--metallic-glass);
+  border-color: var(--metallic-edge-quiet);
+  box-shadow: var(--metallic-depth-groove);
+  transition: background-color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard);
+}
+@media (hover: hover) { [data-material="metallic"] [data-slot="questionnaire-choice"]:hover { border-color: var(--metallic-edge-hover); } }
+[data-material="metallic"] [data-slot="questionnaire-choice"]:has([data-slot="questionnaire-choice-input"]:checked) {
+  background: var(--metallic-steel);
+  border-color: var(--metallic-edge);
+  color: var(--metallic-ink);
+  box-shadow: var(--metallic-depth-raised-flush);
+  --muted-foreground: color-mix(in oklch, var(--metallic-ink) 78%, transparent);
+}
+[data-material="metallic"] [data-slot="questionnaire-choice-indicator"] { border-color: var(--metallic-edge); background: var(--metallic-glass); box-shadow: var(--metallic-depth-groove); }
+[data-material="metallic"] [data-slot="questionnaire-choice"]:has([data-slot="questionnaire-choice-input"]:checked) [data-slot="questionnaire-choice-indicator"] { background: transparent; border-color: var(--metallic-ink); box-shadow: none; color: var(--metallic-ink); }
+[data-material="metallic"] [data-slot="questionnaire-choice-shortcut"] { font-family: var(--font-mono, ui-monospace, monospace); }
+[data-material="metallic"] [data-slot="questionnaire-progress"] { font-family: var(--font-mono, ui-monospace, monospace); text-transform: uppercase; letter-spacing: .06em; }
+

@@ -1,0 +1,100 @@
+/* Shared semantic contract; Morpius values reference its generated web token snapshot. */
+[data-brand] {
+  --radius: .625rem;
+  --ui-radius-sm: 6px;
+  --ui-radius-md: 8px;
+  --ui-radius-lg: 10px;
+  --ui-space-unit: 4px;
+  --focus: var(--ring);
+  --input-border: var(--border);
+  --popover: var(--card);
+  --popover-foreground: var(--foreground);
+  --card-foreground: var(--foreground);
+  --secondary: var(--muted);
+  --secondary-foreground: var(--foreground);
+  --accent: var(--muted);
+  --accent-foreground: var(--foreground);
+  --destructive: #c61e29;
+  --text-danger: #c61e29;
+  --text-success: #607900;
+  --text-warning: #996000;
+  --text-info: #006bd9;
+  --surface-danger-subtle: #fff2f0;
+  --surface-success-subtle: #f1faf1;
+}
+/*
+ * Civilian Studios — engineered chrome (Cult / AI SDK Agents)
+ * + dreamy vintage film atmosphere (Ghibli line/color language):
+ * clear sky blue, meadow greens, soft afternoon light.
+ * Not cream/terracotta; not glossy Pixar 3D.
+ * Product materials (metallic, slime, …) keep their own palettes in demos.
+ */
+[data-brand=civilian] {
+  --radius: .75rem;
+  --ui-radius-sm: 6px;
+  --ui-radius-md: 10px;
+  --ui-radius-lg: 14px;
+  /* Paper washed with sky — slightly warm daylight, not cream */
+  --background: #eef4f0;
+  --foreground: #1c241c;
+  --card: #f7faf6;
+  --muted: #dde8df;
+  --muted-foreground: #4f5d52;
+  --border: color-mix(in oklab, #1c241c 11%, transparent);
+  --input: color-mix(in oklab, #1c241c 14%, transparent);
+  --ring: #2f3d32;
+  --primary: #243028;
+  --primary-foreground: #f4f8f3;
+  --brand-primary: #243028;
+  --brand-accent: #c5d9c8;
+  --brand-accent-foreground: #1c241c;
+  /* Atmosphere tokens from Totoro meadow / sky references */
+  --cs-sky: #8ec8e6;
+  --cs-sky-deep: #5ba3c9;
+  --cs-mist: #d5ebe3;
+  --cs-hill: #7fad6a;
+  --cs-hill-deep: #4f7a45;
+  --cs-bloom: #f0e4a8;
+  --cs-line: #2a3228;
+}
+[data-brand=civilian].dark, .dark [data-brand=civilian] {
+  --background: #101612;
+  --foreground: #e8f0e6;
+  --card: #171e18;
+  --muted: #222b23;
+  --muted-foreground: #9aab9c;
+  --border: color-mix(in oklab, #e8f0e6 12%, transparent);
+  --input: color-mix(in oklab, #e8f0e6 15%, transparent);
+  --ring: #c5d6c4;
+  --primary: #e8f0e6;
+  --primary-foreground: #101612;
+  --brand-primary: #e8f0e6;
+  --brand-accent: #222b23;
+  --brand-accent-foreground: #e8f0e6;
+  --cs-sky: #1a3344;
+  --cs-sky-deep: #0f2230;
+  --cs-mist: #1a2a22;
+  --cs-hill: #243828;
+  --cs-hill-deep: #162218;
+  --cs-bloom: #3a3520;
+  --cs-line: #d4e0d0;
+}
+[data-brand=morpius] {
+  --background:#ffffff; --foreground:#111111;
+  --card:#ffffff; --muted:#eeeeee; --muted-foreground:#6c6c6c;
+  --border:#dcdcdc; --input:#dcdcdc; --ring:#6c6c6c;
+  --primary:#222222; --primary-foreground:#f7f7f7;
+  --brand-primary:#00aa24; --brand-accent:#f1faf1; --brand-accent-foreground:#006502;
+}
+[data-brand=morpius].dark, .dark [data-brand=morpius] {
+  --background:#111111; --foreground:#f7f7f7;
+  --card:#222222; --muted:#363636; --muted-foreground:#adadad;
+  --border:#fafafa1a; --input:#0a0a0acc; --ring:#8b8b8b;
+  --primary:#dcdcdc; --primary-foreground:#222222;
+  --brand-primary:#4ecb5a; --brand-accent:#002b02; --brand-accent-foreground:#4ecb5a;
+}
+[data-brand].dark, .dark [data-brand] {
+  --destructive:#ff6f69; --text-danger:#ff6f69; --text-success:#b8d354;
+  --text-warning:#ebbf31; --text-info:#6fcaff;
+  --surface-danger-subtle:#260404; --surface-success-subtle:#0e1400;
+}

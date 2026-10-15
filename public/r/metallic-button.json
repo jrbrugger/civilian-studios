@@ -1,0 +1,22 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "metallic-button",
+  "title": "Metallic Button",
+  "description": "Button in brushed steel. Civilian Studios — Metallic kit.",
+  "dependencies": [
+    "class-variance-authority",
+    "radix-ui"
+  ],
+  "registryDependencies": [
+    "utils",
+    "https://civilian.studio/r/metallic.json"
+  ],
+  "files": [
+    {
+      "path": "components/ui/metallic-button.tsx",
+      "content": "import * as React from \"react\"\nimport { cva, type VariantProps } from \"class-variance-authority\"\nimport { Slot } from \"radix-ui\"\n\nimport { cn } from \"@/lib/utils\"\n\n/** Brushed steel. The tokens come from the `metallic` registry item. */\nconst metallicButtonVariants = cva(\n  [\n    \"inline-flex shrink-0 items-center justify-center gap-2 rounded-md border border-(--metallic-edge) font-medium whitespace-nowrap select-none\",\n    \"bg-(image:--metallic-steel) text-(--metallic-ink) shadow-[shadow:var(--metallic-shadow)] [text-shadow:var(--metallic-engrave)]\",\n    \"transition-[filter,box-shadow,translate] duration-150 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none\",\n    \"outline-none hover:brightness-105 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring\",\n    // Pressed: the plate sinks 1px and the top bevel turns into a shadow.\n    \"active:translate-y-px active:brightness-95 active:shadow-[shadow:var(--metallic-shadow-pressed)]\",\n    \"disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50\",\n    \"forced-colors:bg-[ButtonFace] forced-colors:text-[ButtonText] forced-colors:border-[ButtonText]\",\n    \"[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4\",\n  ].join(\" \"),\n  {\n    variants: {\n      size: {\n        default: \"h-9 px-4 text-sm\",\n        sm: \"h-8 px-3 text-sm\",\n        lg: \"h-10 px-6 text-sm\",\n        icon: \"size-9\",\n      },\n    },\n    defaultVariants: { size: \"default\" },\n  }\n)\n\nfunction MetallicButton({\n  className,\n  size,\n  asChild = false,\n  type,\n  ...props\n}: React.ComponentProps<\"button\"> & VariantProps<typeof metallicButtonVariants> & { asChild?: boolean }) {\n  const Comp = asChild ? Slot.Root : \"button\"\n  return (\n    <Comp\n      data-slot=\"metallic-button\"\n      // A bare <button> inside a form submits it; make that opt-in.\n      {...(asChild ? {} : { type: type ?? \"button\" })}\n      className={cn(metallicButtonVariants({ size }), className)}\n      {...props}\n    />\n  )\n}\n\nexport { MetallicButton, metallicButtonVariants }\n",
+      "type": "registry:ui"
+    }
+  ],
+  "type": "registry:ui"
+}

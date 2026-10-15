@@ -1,0 +1,186 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "civilian-studios",
+  "homepage": "https://civilian.studio",
+  "items": [
+    {
+      "name": "chip",
+      "type": "registry:ui",
+      "title": "Chip",
+      "description": "Filter chips that join like blocks, and input chips with smooth removal. Civilian Studios — Default kit.",
+      "dependencies": [
+        "radix-ui",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils"
+      ],
+      "files": [
+        {
+          "path": "components/ui/chip-layout.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "components/ui/chip-motion.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "components/ui/chip-group.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "components/ui/chip-list.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "css": {
+        "@keyframes chip-in": {
+          "from": {
+            "opacity": "0",
+            "translate": "0 3px",
+            "scale": "0.96"
+          }
+        }
+      }
+    },
+    {
+      "name": "metallic",
+      "type": "registry:ui",
+      "title": "Metallic UI",
+      "description": "A metal skin for shadcn: brushed steel and eleven other alloys, with dials for polish, finish, grain, depth, density, corners, motion and sweep. Turn it on with data-material=\"metallic\" and mount MetallicRuntime once. Civilian Studios — Metallic kit.",
+      "files": [
+        {
+          "path": "components/ui/metallic-runtime.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "components/ui/metallic.css",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Add data-material=\"metallic\" (and any dials) to your <html> tag, then render <MetallicRuntime /> once in your root layout. Pick your dials at https://civilian.studio/metallic/ui"
+    },
+    {
+      "name": "metallic-chip",
+      "type": "registry:ui",
+      "title": "Metallic Chip",
+      "description": "Chip in brushed steel: chips snap flush like machined parts, with one light sweep when they turn on. Civilian Studios — Metallic kit.",
+      "registryDependencies": [
+        "https://civilian.studio/r/chip.json",
+        "https://civilian.studio/r/metallic.json"
+      ],
+      "files": [
+        {
+          "path": "components/ui/metallic-chip.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "metallic-button",
+      "type": "registry:ui",
+      "title": "Metallic Button",
+      "description": "Button in brushed steel. Civilian Studios — Metallic kit.",
+      "dependencies": [
+        "class-variance-authority",
+        "radix-ui"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://civilian.studio/r/metallic.json"
+      ],
+      "files": [
+        {
+          "path": "components/ui/metallic-button.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "dot-object",
+      "type": "registry:ui",
+      "title": "Dot Object",
+      "description": "A 3D object drawn as dots, with idle, thinking, working, success, error and lost states for AI products. Takes a model (install dot-object-dragon or dot-object-brain, or use the built-in spheres), a required label that screen readers hear on every state change, and an optional shimmering text label. Civilian Studios — Default kit.",
+      "registryDependencies": [
+        "utils"
+      ],
+      "files": [
+        {
+          "path": "components/ui/dot-object-engine.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "components/ui/dot-object-models.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "components/ui/dot-object-painter.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "components/ui/dot-object.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "css": {
+        "@keyframes dot-shimmer": {
+          "to": {
+            "background-position": "0% 0"
+          }
+        }
+      }
+    },
+    {
+      "name": "dot-object-dragon",
+      "type": "registry:ui",
+      "title": "Dot Object: Dragon",
+      "description": "Winged dragon model (7000 dots) for Dot Object. Winged Dragon, one of pair, Minneapolis Institute of Art, CC0.",
+      "registryDependencies": [
+        "https://civilian.studio/r/dot-object.json"
+      ],
+      "files": [
+        {
+          "path": "components/ui/dot-object-dragon.ts",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "dot-object-brain",
+      "type": "registry:ui",
+      "title": "Dot Object: Brain",
+      "description": "Brain model (5000 dots) for Dot Object. Brain by J-Toastie via Poly Pizza, licensed CC BY 3.0 (https://creativecommons.org/licenses/by/3.0/): keep this credit wherever it ships.",
+      "registryDependencies": [
+        "https://civilian.studio/r/dot-object.json"
+      ],
+      "files": [
+        {
+          "path": "components/ui/dot-object-brain.ts",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "slime-switch",
+      "type": "registry:ui",
+      "title": "Slime Switch",
+      "description": "Radix switch with a persistent liquid surface, four palettes, optional state text, accessible label layouts, reduced motion and dried disabled state. Civilian Studios — Slime kit.",
+      "dependencies": [
+        "radix-ui"
+      ],
+      "registryDependencies": [
+        "utils"
+      ],
+      "files": [
+        {
+          "path": "components/ui/slime-switch.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "components/ui/slime-switch.css",
+          "type": "registry:ui"
+        }
+      ]
+    }
+  ]
+}
